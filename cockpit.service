@@ -1,0 +1,13 @@
+[Unit]
+Description=Cognitive Prosthetic Cockpit — unified HUD
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/jared/git/cockpit/cockpit.py
+WorkingDirectory=/home/jared/git/cockpit
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
