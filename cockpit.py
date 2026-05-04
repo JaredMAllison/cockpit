@@ -12,8 +12,8 @@ class CockpitHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         rel = self.path.split("?")[0].lstrip("/") or "index.html"
         file_path = (STATIC / rel).resolve()
-        # Reject path traversal
-        if not str(file_path).startswith(str(STATIC)):
+        # Reject path traversal — is_relative_to() compares Path objects, immune to prefix collisions
+        if not file_path.is_relative_to(STATIC):
             self.send_response(403)
             self.end_headers()
             return
