@@ -1,5 +1,4 @@
 // editable.jsx — LabelsContext + E component + useLabels hook + template store
-// Port of handoff editable.jsx + LabelsContext/E from panels.jsx
 
 const TEMPLATES_LS_KEY = 'cockpit_templates_v1';
 const ACTIVE_TEMPLATE_LS_KEY = 'cockpit_active_template_v1';
@@ -31,6 +30,9 @@ function _loadTemplates() {
     return { ...BUILT_IN_TEMPLATES, ...user };
   } catch { return { ...BUILT_IN_TEMPLATES }; }
 }
+function _loadUserTemplates() {
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_LS_KEY) || '{}'); } catch { return {}; }
+}
 function _saveUserTemplates(user) {
   try { localStorage.setItem(TEMPLATES_LS_KEY, JSON.stringify(user)); } catch {}
 }
@@ -45,6 +47,8 @@ function useLabels() {
   const [activeName, setActiveName] = React.useState(_loadActiveName);
   const [labels, setLabels] = React.useState(() => _loadTemplates()[_loadActiveName()] || BUILT_IN_TEMPLATES['OoT Faithful']);
   const [allTemplates, setAllTemplates] = React.useState(_loadTemplates);
+  const labelsRef = React.useRef(labels);
+  labelsRef.current = labels;
 
   const switchTemplate = React.useCallback((name) => {
     const all = _loadTemplates();
@@ -54,27 +58,32 @@ function useLabels() {
   }, []);
 
   const setLabel = React.useCallback((key, value) => {
-    setLabels(prev => {
-      const next = { ...prev, [key]: value };
-      if (!BUILT_IN_TEMPLATES[activeName]) {
-        const user = JSON.parse(localStorage.getItem(TEMPLATES_LS_KEY) || '{}');
-        user[activeName] = next;
-        _saveUserTemplates(user);
-        setAllTemplates(_loadTemplates());
-      }
-      return next;
-    });
+    const next = { ...labelsRef.current, [key]: value };
+    setLabels(next);
+    if (!BUILT_IN_TEMPLATES[activeName]) {
+      const user = _loadUserTemplates();
+      user[activeName] = next;
+      _saveUserTemplates(user);
+      setAllTemplates(_loadTemplates());
+    }
   }, [activeName]);
 
   const saveAs = React.useCallback((name) => {
     if (!name) return;
-    const user = JSON.parse(localStorage.getItem(TEMPLATES_LS_KEY) || '{}');
-    user[name] = { ...labels };
+    const user = _loadUserTemplates();
+    user[name] = { ...labelsRef.current };
     _saveUserTemplates(user); _saveActiveName(name);
-    setActiveName(name); setAllTemplates(_loadTemplates());
-  }, [labels]);
+    setActiveName(name);
+    setLabels({ ...labelsRef.current });
+    setAllTemplates(_loadTemplates());
+  }, []);
 
-  return [labels, setLabel, { activeName, switchTemplate, saveAs, allTemplates, isBuiltIn: !!BUILT_IN_TEMPLATES[activeName] }];
+  const templateApi = React.useMemo(() => ({
+    activeName, switchTemplate, saveAs, allTemplates,
+    isBuiltIn: !!BUILT_IN_TEMPLATES[activeName],
+  }), [activeName, switchTemplate, saveAs, allTemplates]);
+
+  return [labels, setLabel, templateApi];
 }
 
 // ─── LabelsContext ──────────────────────────────────────────────────────
@@ -95,16 +104,23 @@ function LabelsProvider({ editing, children }) {
 function E({ path, fallback, style, multiline = false, prefix, suffix }) {
   const ctx = React.useContext(LabelsContext);
   const value = ctx.get(path, fallback);
+  const originalRef = React.useRef('');
+
   if (!ctx.editing) return <span style={style}>{prefix}{value}{suffix}</span>;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', ...style }}>
       {prefix}
       <span
         contentEditable suppressContentEditableWarning spellCheck={false}
+        onFocus={e => { originalRef.current = e.currentTarget.textContent; }}
         onBlur={e => ctx.set(path, e.currentTarget.textContent)}
         onKeyDown={e => {
           if (!multiline && e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-          if (e.key === 'Escape') { e.preventDefault(); e.currentTarget.blur(); }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.currentTarget.textContent = originalRef.current;
+            e.currentTarget.blur();
+          }
         }}
         onClick={e => e.stopPropagation()}
         style={{ outline: 'none', background: 'rgba(255,230,100,.06)', boxShadow: '0 0 0 1px rgba(255,230,100,.35)', borderRadius: 2, padding: '0 3px', margin: '0 -3px', cursor: 'text', minWidth: 12, color: 'inherit' }}
