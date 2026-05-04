@@ -1,14 +1,39 @@
 // app.jsx — root component: sub-screen state, keyboard nav, editMode, LabelsProvider
 
+const SUBS = ['quest', 'map', 'items'];
+
+const QuestStatus = () => (
+  <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+    <div style={{ flex: 1, borderRight: '1px solid #1d1a16' }}><ProjectsPanel /></div>
+    <div style={{ flex: 1 }}><MarlinPanel /></div>
+  </div>
+);
+
+const MapScreen = () => (
+  <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+    <div style={{ flex: 1, borderRight: '1px solid #1d1a16' }}><TtfPanel /></div>
+    <div style={{ width: 260, flexShrink: 0 }}><QuickhacksPanel /></div>
+  </div>
+);
+
+const ItemsScreen = ({ arielFile, setArielFile, setActive }) => (
+  <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+    <div style={{ flex: '0 0 52%', borderRight: '1px solid #1d1a16' }}>
+      <VaultPanel highlightedFile={arielFile} />
+    </div>
+    <div style={{ flex: 1 }}>
+      <ArielPanel onCiteFile={(path) => { setArielFile(path); setActive('items'); }} />
+    </div>
+  </div>
+);
+
 function App() {
-  const SUBS = ['quest', 'map', 'items'];
-  const [active, setActive]     = React.useState('quest');
-  const [editMode, setEditMode] = React.useState(false);
+  const [active, setActive]       = React.useState('quest');
+  const [editMode, setEditMode]   = React.useState(false);
   const [arielFile, setArielFile] = React.useState(null);
   const { data: rootState } = usePoll(fetchState, 30000);
   const mode = rootState?.mode || 'available';
 
-  // Keyboard navigation
   React.useEffect(() => {
     const handler = (e) => {
       const tag = e.target.tagName;
@@ -26,33 +51,9 @@ function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [active]);
 
-  // Sub-screen content
-  const QuestStatus = () => (
-    <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-      <div style={{ flex: 1, borderRight: '1px solid #1d1a16' }}><ProjectsPanel /></div>
-      <div style={{ flex: 1 }}><MarlinPanel /></div>
-    </div>
-  );
-
-  const MapScreen = () => (
-    <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-      <div style={{ flex: 1, borderRight: '1px solid #1d1a16' }}><TtfPanel /></div>
-      <div style={{ width: 260, flexShrink: 0 }}><QuickhacksPanel /></div>
-    </div>
-  );
-
-  const ItemsScreen = () => (
-    <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-      <div style={{ flex: '0 0 52%', borderRight: '1px solid #1d1a16' }}>
-        <VaultPanel highlightedFile={arielFile} />
-      </div>
-      <div style={{ flex: 1 }}>
-        <ArielPanel onCiteFile={(path) => { setArielFile(path); setActive('items'); }} />
-      </div>
-    </div>
-  );
-
-  const content = active === 'quest' ? <QuestStatus /> : active === 'map' ? <MapScreen /> : <ItemsScreen />;
+  const content = active === 'quest' ? <QuestStatus /> :
+                  active === 'map'   ? <MapScreen /> :
+                  <ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} />;
 
   return (
     <LabelsProvider editing={editMode}>
