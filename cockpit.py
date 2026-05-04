@@ -4,8 +4,10 @@ import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+mimetypes.add_type("text/javascript", ".jsx")
+
 PORT = int(os.environ.get("COCKPIT_PORT", "9100"))
-STATIC = Path(__file__).parent
+STATIC = Path(__file__).resolve().parent
 
 
 class CockpitHandler(BaseHTTPRequestHandler):
