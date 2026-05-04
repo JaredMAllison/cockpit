@@ -8,6 +8,8 @@ function SubscreenTransition({ active, children }) {
   const [phase, setPhase] = React.useState('idle'); // idle | out | in
   const [direction, setDirection] = React.useState(1); // 1 = forward, -1 = backward
   const pendingRef = React.useRef(active);
+  const phaseRef   = React.useRef('idle');
+  const rafRef     = React.useRef([]);
 
   React.useEffect(() => {
     if (active === displayed) return;
@@ -15,17 +17,27 @@ function SubscreenTransition({ active, children }) {
     const toIdx   = SUBSCREEN_ORDER.indexOf(active);
     setDirection(toIdx > fromIdx ? 1 : -1);
     pendingRef.current = active;
+    phaseRef.current = 'out';
     setPhase('out');
   }, [active]);
 
+  React.useEffect(() => {
+    return () => rafRef.current.forEach(id => cancelAnimationFrame(id));
+  }, []);
+
   const handleTransitionEnd = React.useCallback(() => {
-    if (phase === 'out') {
+    if (phaseRef.current === 'out') {
       setDisplayed(pendingRef.current);
+      phaseRef.current = 'in';
       setPhase('in');
-    } else if (phase === 'in') {
-      requestAnimationFrame(() => requestAnimationFrame(() => setPhase('idle')));
+    } else if (phaseRef.current === 'in') {
+      const id1 = requestAnimationFrame(() => {
+        const id2 = requestAnimationFrame(() => { phaseRef.current = 'idle'; setPhase('idle'); });
+        rafRef.current[1] = id2;
+      });
+      rafRef.current[0] = id1;
     }
-  }, [phase]);
+  }, []);
 
   const slideOut = `translateX(${direction * -12}px)`;
   const slideIn  = `translateX(${direction * 12}px)`;
