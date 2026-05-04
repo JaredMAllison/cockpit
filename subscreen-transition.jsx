@@ -22,6 +22,7 @@ function SubscreenTransition({ active, children }) {
     if (phase === 'out') {
       setDisplayed(pendingRef.current);
       setPhase('in');
+    } else if (phase === 'in') {
       requestAnimationFrame(() => requestAnimationFrame(() => setPhase('idle')));
     }
   }, [phase]);
