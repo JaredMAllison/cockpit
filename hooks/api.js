@@ -21,15 +21,19 @@ function fetchAdls()          { return _fetch(`${HOSTS.marlin}/api/adls`); }
 function fetchProjects()      { return _fetch(`${HOSTS.projects}/api/projects`); }
 function fetchVaultTree()     { return _fetch(`${HOSTS.projects}/api/vault/tree`); }
 function fetchVaultFile(path) {
-  return fetch(`${HOSTS.projects}/api/vault/file?path=${encodeURIComponent(path)}`)
+  const url = `${HOSTS.projects}/api/vault/file?path=${encodeURIComponent(path)}`;
+  return fetch(url)
     .then(r => {
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
       return r.text();  // vault files are markdown text, not JSON
     });
 }
 function fetchTtfEvents() {
-  const today = new Date().toISOString().slice(0, 10);
-  const week  = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const d     = new Date();
+  const pad   = n => String(n).padStart(2, '0');
+  const today = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const end   = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
+  const week  = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}`;
   return _fetch(`${HOSTS.ttf}/api/events?from=${today}&to=${week}`);
 }
 function fetchArielTurns() { return Promise.resolve([]); }  // stubbed until Ariel API confirmed
