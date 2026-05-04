@@ -31,11 +31,7 @@ function SubscreenTransition({ active, children }) {
       phaseRef.current = 'in';
       setPhase('in');
     } else if (phaseRef.current === 'in') {
-      const id1 = requestAnimationFrame(() => {
-        const id2 = requestAnimationFrame(() => { phaseRef.current = 'idle'; setPhase('idle'); });
-        rafRef.current[1] = id2;
-      });
-      rafRef.current[0] = id1;
+      rafRef.current[0] = requestAnimationFrame(() => { phaseRef.current = 'idle'; setPhase('idle'); });
     }
   }, []);
 
