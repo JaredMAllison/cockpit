@@ -112,12 +112,10 @@ function ZeldaFrame({ activeSubscreen, onSubscreenChange, mode, children }) {
       fontFamily: ZELDA_FONT_DISPLAY, overflow: 'hidden', boxSizing: 'border-box',
     }}>
       <div style={{ position: 'absolute', inset: 0, opacity: 0.25, pointerEvents: 'none', backgroundImage: `radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px)`, backgroundSize: '3px 3px' }}/>
-      <div style={{ position: 'relative', height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 2 }}>
-        <ShoulderHint side="L" tabId={prev.id} fallbackLabel={prev.fallback}/>
+      <div style={{ position: 'relative', height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
         <div style={{ color: ZELDA.parchText, fontSize: 22, letterSpacing: 6, textTransform: 'uppercase', fontWeight: 500, textShadow: `0 0 8px rgba(0,0,0,.6), 0 0 1px ${ZELDA.gold}` }}>
           <E path={`subscreen.${cur.id}`} fallback={cur.fallback} style={{}}/>
         </div>
-        <ShoulderHint side="R" tabId={next.id} fallbackLabel={next.fallback}/>
       </div>
       <div style={{ position: 'relative', padding: '0 56px', display: 'flex', justifyContent: 'center', gap: 6, zIndex: 2 }}>
         {SUBS.map((s, i) => (
@@ -125,10 +123,10 @@ function ZeldaFrame({ activeSubscreen, onSubscreenChange, mode, children }) {
         ))}
       </div>
       <div style={{ position: 'absolute', top: 102, left: 32, right: 32, bottom: 56, background: ZELDA.feltInner, border: `3px solid ${ZELDA.goldDeep}`, boxShadow: `0 0 0 1px ${ZELDA.gold}, inset 0 0 24px rgba(0,0,0,.6), 0 8px 32px rgba(0,0,0,.5)`, padding: 14, zIndex: 1 }}>
-        <div style={{ position: 'absolute', top: -4, left: -4 }}><CornerFlourish rotation={0}/></div>
-        <div style={{ position: 'absolute', top: -4, right: -4 }}><CornerFlourish rotation={90}/></div>
-        <div style={{ position: 'absolute', bottom: -4, right: -4 }}><CornerFlourish rotation={180}/></div>
-        <div style={{ position: 'absolute', bottom: -4, left: -4 }}><CornerFlourish rotation={270}/></div>
+        <div style={{ position: 'absolute', top: -4, left: -4, zIndex: 2 }}><CornerFlourish rotation={0}/></div>
+        <div style={{ position: 'absolute', top: -4, right: -4, zIndex: 2 }}><CornerFlourish rotation={90}/></div>
+        <div style={{ position: 'absolute', bottom: -4, right: -4, zIndex: 2 }}><CornerFlourish rotation={180}/></div>
+        <div style={{ position: 'absolute', bottom: -4, left: -4, zIndex: 2 }}><CornerFlourish rotation={270}/></div>
         <div style={{ width: '100%', height: '100%', background: '#000', border: `1px solid ${ZELDA.goldDim}`, boxShadow: 'inset 0 0 0 2px #000, inset 0 0 16px rgba(0,0,0,.8)', overflow: 'hidden', position: 'relative' }}>
           {children}
         </div>
