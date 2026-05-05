@@ -17,8 +17,12 @@ function SubscreenTransition({ active, children }) {
     const toIdx   = SUBSCREEN_ORDER.indexOf(active);
     setDirection(toIdx > fromIdx ? 1 : -1);
     pendingRef.current = active;
-    phaseRef.current = 'out';
-    setPhase('out');
+    // Defer phase='out' one frame so the browser paints opacity:1 before transitioning to 0
+    const id = requestAnimationFrame(() => {
+      phaseRef.current = 'out';
+      setPhase('out');
+    });
+    rafRef.current.push(id);
   }, [active]);
 
   React.useEffect(() => {
