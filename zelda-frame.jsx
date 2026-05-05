@@ -26,7 +26,7 @@ const SUBS = [
 
 function CornerFlourish({ rotation = 0, size = 36 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" style={{ transform: `rotate(${rotation}deg)`, position: 'absolute' }}>
+    <svg width={size} height={size} viewBox="0 0 36 36" style={{ transform: `rotate(${rotation}deg)`, display: 'block' }}>
       <defs>
         <linearGradient id={`zgold-${rotation}`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={ZELDA.goldHighlight}/>
