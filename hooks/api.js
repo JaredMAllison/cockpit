@@ -37,3 +37,8 @@ function fetchTtfEvents() {
   return _fetch(`${HOSTS.ttf}/api/events?from=${today}&to=${week}`);
 }
 function fetchArielTurns() { return Promise.resolve([]); }  // stubbed until Ariel API confirmed
+
+function markAdlDone(title) {
+  return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(title)}`, { redirect: 'manual' })
+    .catch(() => {});
+}
