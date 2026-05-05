@@ -15,7 +15,7 @@ echo "Copying LMF..."
 rsync -av --delete --delete-excluded --exclude='.git' --exclude='__pycache__' --exclude='tests' \
   --exclude='.worktrees' --exclude='operator/config.yaml' \
   --exclude='operator/*.db' --exclude='*.db-shm' --exclude='*.db-wal' \
-  --exclude='features/testing/results/' --exclude='features/testing/synthetic/' \
+  --exclude='features/testing/' \
   --exclude='.pytest_cache/' --exclude='.code-review-graph/' \
   --exclude='docs/' \
   ~/lmf-ollama-obsidian/ "$OUT/lmf/"

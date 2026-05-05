@@ -1,5 +1,5 @@
 // hooks/api.js — fetch wrappers, one function per endpoint
-// HOSTS is the only thing that changes between Jared's and Jason's deployments.
+// HOSTS — update these if services run on different ports or hosts.
 
 const HOSTS = {
   marlin:   'http://localhost:7832',
@@ -36,8 +36,6 @@ function fetchTtfEvents() {
   const week  = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}`;
   return _fetch(`${HOSTS.ttf}/api/events?from=${today}&to=${week}`);
 }
-function fetchArielTurns() { return Promise.resolve([]); }  // stubbed until Ariel API confirmed
-
 function markAdlDone(title) {
   return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(title)}`, { redirect: 'manual' })
     .catch(() => {});
