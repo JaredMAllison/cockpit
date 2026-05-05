@@ -5,6 +5,17 @@ function VaultPanel({ highlightedFile, onFileClick }) {
   const [preview, setPreview]       = React.useState(null);
   const [previewPath, setPreviewPath] = React.useState(null);
   const [loadingPreview, setLoadingPreview] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('vault-collapsed') || '{}'); }
+    catch { return {}; }
+  });
+  const toggleFolder = React.useCallback((folder) => {
+    setCollapsed(prev => {
+      const next = { ...prev, [folder]: prev[folder] !== false ? false : true };
+      localStorage.setItem('vault-collapsed', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const handleSelect = React.useCallback((path) => {
     if (path === previewPath) return;
@@ -34,11 +45,19 @@ function VaultPanel({ highlightedFile, onFileClick }) {
           <E path="panel.vault" fallback="Vault" style={{ fontSize: 11, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}/>
           {error && <span style={{ color: '#c95a52', marginLeft: 8 }}>⚠</span>}
         </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+        <div className="vault-tree" style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
           {Object.keys(byFolder).sort().map(folder => (
             <div key={folder}>
-              {folder && <div style={{ padding: '4px 16px', fontSize: 9, color: '#5a5249', textTransform: 'uppercase', letterSpacing: 1 }}>{folder}/</div>}
-              {byFolder[folder].map(item => {
+              {folder && (
+                <div
+                  onClick={() => toggleFolder(folder)}
+                  style={{ padding: '4px 16px', fontSize: 9, color: '#5a5249', textTransform: 'uppercase', letterSpacing: 1, cursor: 'pointer', display: 'flex', gap: 4, userSelect: 'none' }}
+                >
+                  <span>{collapsed[folder] !== false ? '▶' : '▼'}</span>
+                  {folder}/
+                </div>
+              )}
+              {(collapsed[folder] === false || !folder) && byFolder[folder].map(item => {
                 const isHighlighted = item.path === highlightedFile;
                 const isSelected    = item.path === previewPath;
                 return (
@@ -55,6 +74,7 @@ function VaultPanel({ highlightedFile, onFileClick }) {
               })}
             </div>
           ))}
+
         </div>
       </div>
       {/* Preview pane */}
@@ -63,7 +83,7 @@ function VaultPanel({ highlightedFile, onFileClick }) {
           {previewPath || 'select a file'}
           {loadingPreview && ' …'}
         </div>
-        <pre style={{ flex: 1, overflow: 'auto', padding: '12px 16px', margin: 0, fontSize: 10, color: '#9a9286', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        <pre className="preview-pane" style={{ flex: 1, overflow: 'auto', padding: '12px 16px', margin: 0, fontSize: 10, color: '#9a9286', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {preview || (previewPath ? '' : '← select a file to preview')}
         </pre>
       </div>
