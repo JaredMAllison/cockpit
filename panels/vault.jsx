@@ -1,5 +1,32 @@
 // panels/vault.jsx — Sub-screen 3 left: vault file tree + on-demand preview
 
+function ContentPane({ path, content, loading, fontSize, onClose, onFontSizeChange }) {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #1d1a16', flexShrink: 0, color: '#5a5249', fontSize: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {path || 'select a file'}
+          {loading && ' …'}
+        </span>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          {onFontSizeChange && path && (
+            <>
+              <button onClick={() => onFontSizeChange(-1)} style={{ background: 'transparent', border: '1px solid #2a2520', color: '#5a5249', borderRadius: 2, padding: '0 5px', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit' }}>A−</button>
+              <button onClick={() => onFontSizeChange(1)}  style={{ background: 'transparent', border: '1px solid #2a2520', color: '#5a5249', borderRadius: 2, padding: '0 5px', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit' }}>A+</button>
+            </>
+          )}
+          {onClose && (
+            <button onClick={onClose} style={{ background: 'transparent', border: '1px solid #2a2520', color: '#5a5249', borderRadius: 2, padding: '0 6px', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit' }}>✕</button>
+          )}
+        </div>
+      </div>
+      <pre className="preview-pane" style={{ flex: 1, overflow: 'auto', padding: '12px 16px', margin: 0, fontSize: fontSize || 10, color: '#9a9286', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {content || (path ? '' : '← select a file to preview')}
+      </pre>
+    </div>
+  );
+}
+
 function VaultPanel({ highlightedFile, onFileClick }) {
   const { data: tree, error } = usePoll(fetchVaultTree, 60000);
   const [preview, setPreview]       = React.useState(null);
@@ -87,23 +114,16 @@ function VaultPanel({ highlightedFile, onFileClick }) {
         </div>
       </div>
       {/* Preview pane */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #1d1a16', flexShrink: 0, color: '#5a5249', fontSize: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {previewPath || 'select a file'}
-            {loadingPreview && ' …'}
-          </span>
-          {previewPath && (
-            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-              <button onClick={() => changeFontSize(-1)} style={{ background: 'transparent', border: '1px solid #2a2520', color: '#5a5249', borderRadius: 2, padding: '0 5px', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit' }}>A−</button>
-              <button onClick={() => changeFontSize(1)}  style={{ background: 'transparent', border: '1px solid #2a2520', color: '#5a5249', borderRadius: 2, padding: '0 5px', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit' }}>A+</button>
-            </div>
-          )}
-        </div>
-        <pre className="preview-pane" style={{ flex: 1, overflow: 'auto', padding: '12px 16px', margin: 0, fontSize: fontSize, color: '#9a9286', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {preview || (previewPath ? '' : '← select a file to preview')}
-        </pre>
-      </div>
+      <ContentPane
+        path={previewPath}
+        content={preview}
+        loading={loadingPreview}
+        fontSize={fontSize}
+        onFontSizeChange={changeFontSize}
+        onClose={previewPath ? () => { setPreviewPath(null); setPreview(null); } : null}
+      />
     </div>
   );
 }
+
+window.ContentPane = ContentPane;
