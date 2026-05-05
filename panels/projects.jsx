@@ -24,7 +24,7 @@ function ProjectsPanel() {
         </span>
       </div>
       {/* List */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
+      <div className="panel-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
         {list.map((proj, i) => {
           const color = PRIORITY_COLOR[proj.priority] || '#5a5249';
           return (

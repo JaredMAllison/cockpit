@@ -15,7 +15,7 @@ function ArielPanel({ onCiteFile }) {
         <E path="panel.ariel" fallback="Ariel" style={{ fontSize: 11, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}/>
         {offline && <span style={{ fontSize: 9, color: '#c95a52' }}>Bazza offline</span>}
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
+      <div className="panel-scroll" style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
         {turns.length === 0 && (
           <div style={{ color: '#5a5249', paddingTop: 8 }}>
             {offline ? 'Bazza is unreachable — Ariel unavailable' : 'no conversation yet'}

@@ -30,7 +30,7 @@ function MarlinPanel() {
         <div style={{ fontSize: 12, color: '#e8e3d8', lineHeight: 1.4 }}>{current}</div>
       </div>
       {/* Today's tasks */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
+      <div className="panel-scroll" style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
         <div style={{ fontSize: 9, color: '#5a5249', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>today</div>
         {allTasks.map((t, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1d1a16' }}>

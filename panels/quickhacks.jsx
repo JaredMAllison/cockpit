@@ -48,7 +48,7 @@ function QuickhacksPanel() {
       </div>
       {/* ADLs */}
       {displayAdls.length > 0 && (
-        <div style={{ flex: 1, overflow: 'auto', padding: '0 12px 8px', borderTop: '1px solid #1d1a16' }}>
+        <div className="panel-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 12px 8px', borderTop: '1px solid #1d1a16' }}>
           <div style={{ fontSize: 9, color: '#5a5249', textTransform: 'uppercase', letterSpacing: 1, padding: '8px 0 6px' }}>ADLs due</div>
           {displayAdls.map((a, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0' }}>
