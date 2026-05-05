@@ -6,14 +6,18 @@ mkdir -p "$OUT"/{python,ollama/models,lmf,cockpit,vault}
 
 # -- Cockpit --
 echo "Copying cockpit..."
-rsync -av --exclude='.git' --exclude='deploy' --exclude='__pycache__' \
+rsync -av --delete --exclude='.git' --exclude='deploy' --exclude='__pycache__' \
+  --exclude='docs/' \
   ~/git/cockpit/ "$OUT/cockpit/"
 
 # -- LMF orchestrator --
 echo "Copying LMF..."
-rsync -av --exclude='.git' --exclude='__pycache__' --exclude='tests' \
+rsync -av --delete --exclude='.git' --exclude='__pycache__' --exclude='tests' \
   --exclude='.worktrees' --exclude='operator/config.yaml' \
   --exclude='operator/*.db' --exclude='*.db-shm' --exclude='*.db-wal' \
+  --exclude='features/testing/results/' --exclude='features/testing/synthetic/' \
+  --exclude='.pytest_cache/' --exclude='.code-review-graph/' \
+  --exclude='docs/' \
   ~/lmf-ollama-obsidian/ "$OUT/lmf/"
 
 # -- kb_core (shared vault search library) --

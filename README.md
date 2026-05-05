@@ -96,6 +96,6 @@ Templates (preset label sets) are stored alongside user saves. Three built-in te
 | `http://localhost:7833/api/vault/tree` | Vault |
 | `http://localhost:7833/api/vault/file?path=...` | Vault |
 | `http://localhost:3000/api/events?from=...&to=...` | TTF |
-| `http://10.0.0.78:8742` | Ariel (stubbed) |
+| `http://localhost:8742` | Ariel (stubbed) |
 
-All ports are Jared's defaults. Jason's `api.js` uses `:7842`/`:7843` instead.
+All ports configurable in `hooks/api.js` — change `HOSTS` to match your deployment.
