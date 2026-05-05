@@ -1,0 +1,11 @@
+# LMF operator config
+# Edit vault_path to match where your vault folder is located.
+vault_path: "C:\\Users\\YourName\\Documents\\vault"
+model: qwen2.5:7b
+ollama_url: http://localhost:11434/api/chat
+memory_db_path: "C:\\Users\\YourName\\AppData\\Local\\lmf-memory\\memory.db"
+port: 8742
+num_ctx: 8192
+timeout_s: 300
+verbose_writes: false
+allow_external_writes: false

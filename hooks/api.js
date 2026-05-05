@@ -5,7 +5,7 @@ const HOSTS = {
   marlin:   'http://localhost:7832',
   projects: 'http://localhost:7833',
   ttf:      'http://localhost:3000',
-  ariel:    'http://10.0.0.78:8742',
+  ariel:    'http://localhost:8742',
 };
 
 function _fetch(url) {
