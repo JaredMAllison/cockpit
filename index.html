@@ -1,5 +1,60 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Cockpit</title></head>
-<body style="background:#0d2a1f;color:#d4b76a;font-family:monospace;padding:2rem">
-<h1>Cockpit scaffold — wiring in progress</h1>
-</body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #0d2a1f; }
+    button { font-family: inherit; }
+  .panel-scroll::-webkit-scrollbar { width: 4px; }
+  .panel-scroll::-webkit-scrollbar-track { background: transparent; }
+  .panel-scroll::-webkit-scrollbar-thumb { background: #2a2520; border-radius: 2px; }
+  .panel-scroll { scrollbar-color: #2a2520 transparent; scrollbar-width: thin; }
+  .vault-tree::-webkit-scrollbar { width: 4px; }
+  .vault-tree::-webkit-scrollbar-track { background: transparent; }
+  .vault-tree::-webkit-scrollbar-thumb { background: #2a2520; border-radius: 2px; }
+  .vault-tree { scrollbar-color: #2a2520 transparent; scrollbar-width: thin; }
+  .preview-pane::-webkit-scrollbar { width: 4px; }
+  .preview-pane::-webkit-scrollbar-track { background: transparent; }
+  .preview-pane::-webkit-scrollbar-thumb { background: #2a2520; border-radius: 2px; }
+  .preview-pane { scrollbar-color: #2a2520 transparent; scrollbar-width: thin; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
+
+  <!-- Hooks: plain JS, no Babel needed -->
+  <script src="hooks/usePoll.js"></script>
+  <script src="hooks/api.js"></script>
+  <script src="hooks/ttf-helpers.js"></script>
+
+  <!-- Components: load order matters — dependencies before dependents -->
+  <script type="text/babel" src="editable.jsx"></script>
+  <script type="text/babel" src="zelda-frame.jsx"></script>
+  <script type="text/babel" src="subscreen-transition.jsx"></script>
+  <script type="text/babel" src="hooks/ttf-belt-controller.jsx"></script>
+  <script type="text/babel" src="hooks/ttf-nav-bar.jsx"></script>
+  <script type="text/babel" src="panels/projects.jsx"></script>
+  <script type="text/babel" src="panels/marlin.jsx"></script>
+  <script type="text/babel" src="panels/ttf.jsx"></script>
+  <script type="text/babel" src="panels/quickhacks.jsx"></script>
+  <script type="text/babel" src="panels/vault.jsx"></script>
+  <script type="text/babel" src="panels/ariel.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+
+  <!-- Mount -->
+  <script type="text/babel">
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

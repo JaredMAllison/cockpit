@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
+Environment=COCKPIT_PORT=9100
 ExecStart=/usr/bin/python3 /home/jared/git/cockpit/cockpit.py
 WorkingDirectory=/home/jared/git/cockpit
 Restart=on-failure
