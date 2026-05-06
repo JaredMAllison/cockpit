@@ -72,7 +72,7 @@ function ArielPanel({ onCiteFile }) {
   return (
     <div style={{ background: '#0e0c0a', color: '#e8e3d8', fontFamily: '"Berkeley Mono","JetBrains Mono",ui-monospace,monospace', fontSize: 11, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #1d1a16', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <E path="panel.ariel" fallback="Ariel" style={{ fontSize: 11, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}/>
+        <E path="panel.ariel" fallback="Navi" style={{ fontSize: 11, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}/>
         <span style={{ fontSize: 9, color: offline ? '#c95a52' : loading ? '#d4a84a' : checking ? '#5a5249' : '#6c9a5a' }}>
           {offline ? 'offline' : loading ? activityLabel() : checking ? 'connecting…' : 'online'}
         </span>
