@@ -45,6 +45,24 @@ function VaultPanel({ highlightedFile, onFileClick }) {
     return next;
   });
 
+  // Auto-open preview + expand folder when Ariel cites a file
+  React.useEffect(() => {
+    if (!highlightedFile) return;
+    setPreviewPath(highlightedFile);
+    setLoadingPreview(true);
+    fetchVaultFile(highlightedFile)
+      .then(content => { setPreview(content); setLoadingPreview(false); })
+      .catch(() => { setPreview('(error loading file)'); setLoadingPreview(false); });
+    // Auto-expand containing folder
+    const folder = highlightedFile.includes('/') ? highlightedFile.split('/').slice(0, -1).join('/') : '';
+    setCollapsed(prev => {
+      if (prev[folder] === false) return prev;
+      const next = { ...prev, [folder]: false };
+      localStorage.setItem('vault-collapsed', JSON.stringify(next));
+      return next;
+    });
+  }, [highlightedFile]);
+
   const toggleFolder = React.useCallback((folder) => {
     setCollapsed(prev => {
       const next = { ...prev, [folder]: prev[folder] !== false ? false : true };

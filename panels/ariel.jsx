@@ -92,7 +92,7 @@ function ArielPanel({ onCiteFile }) {
             <div style={{ color: t.role === 'ariel' ? '#9a9286' : '#e8e3d8', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{t.text}</div>
             {t.files && t.files.length > 0 && (
               <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {t.files.map((f, fi) => (
+                {[...new Set(t.files)].map((f, fi) => (
                   <button key={fi} onClick={() => onCiteFile && onCiteFile(f)}
                     style={{ background: 'none', border: '1px solid #2a2520', borderRadius: 2, color: '#c96442', fontSize: 9, cursor: 'pointer', padding: '1px 6px', fontFamily: 'inherit' }}>
                     ↗ {f.split('/').pop()}
