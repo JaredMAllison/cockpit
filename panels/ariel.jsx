@@ -5,7 +5,7 @@ function ArielPanel({ onCiteFile }) {
   const [turns, setTurns] = React.useState([]);
   const [input, setInput] = React.useState('');
   const [loading, setLoading] = React.useState(false);
-  const [activity, setActivity] = React.useState(null);  // { inferring, elapsed }
+  const [elapsed, setElapsed] = React.useState(0);
   const scrollRef = React.useRef(null);
   const startRef = React.useRef(null);
 
@@ -20,19 +20,13 @@ function ArielPanel({ onCiteFile }) {
     return () => clearInterval(id);
   }, []);
 
-  // Activity polling while loading — hits /status every 2s
+  // Local elapsed timer — increments every second, independent of server
   React.useEffect(() => {
-    if (!loading) { setActivity(null); return; }
+    if (!loading) { setElapsed(0); return; }
     startRef.current = Date.now();
-    const poll = () => {
-      const elapsed = Math.round((Date.now() - startRef.current) / 1000);
-      fetch(`${HOSTS.ariel}/status`)
-        .then(r => r.json())
-        .then(d => setActivity({ inferring: d.inference_in_progress, elapsed }))
-        .catch(() => setActivity(prev => ({ inferring: false, elapsed: Math.round((Date.now() - startRef.current) / 1000) })));
-    };
-    poll();
-    const id = setInterval(poll, 2000);
+    const id = setInterval(() => {
+      setElapsed(Math.round((Date.now() - startRef.current) / 1000));
+    }, 1000);
     return () => clearInterval(id);
   }, [loading]);
 
@@ -57,7 +51,8 @@ function ArielPanel({ onCiteFile }) {
       }).then(r => r.json());
       const text = data.response || data.error || 'no response';
       const ms = data.response_ms;
-      setTurns(prev => [...prev, { role: 'ariel', time: timeStr(), text, ms }]);
+      const files = data.files_read || [];
+      setTurns(prev => [...prev, { role: 'ariel', time: timeStr(), text, ms, files }]);
     } catch (e) {
       setTurns(prev => [...prev, { role: 'ariel', time: timeStr(), text: `[error: ${e.message}]` }]);
     } finally {
@@ -72,11 +67,7 @@ function ArielPanel({ onCiteFile }) {
   const offline = online === false;
   const checking = online === null;
 
-  const activityLabel = () => {
-    if (!activity) return 'working…';
-    const t = `${activity.elapsed}s`;
-    return activity.inferring ? `generating… ${t}` : `processing… ${t}`;
-  };
+  const activityLabel = () => `working… ${elapsed}s`;
 
   return (
     <div style={{ background: '#0e0c0a', color: '#e8e3d8', fontFamily: '"Berkeley Mono","JetBrains Mono",ui-monospace,monospace', fontSize: 11, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -99,8 +90,15 @@ function ArielPanel({ onCiteFile }) {
               {t.ms && <span style={{ marginLeft: 6 }}>{(t.ms / 1000).toFixed(1)}s</span>}
             </div>
             <div style={{ color: t.role === 'ariel' ? '#9a9286' : '#e8e3d8', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{t.text}</div>
-            {t.file && (
-              <button onClick={() => onCiteFile && onCiteFile(t.file)} style={{ background: 'none', border: 'none', color: '#c96442', fontSize: 9, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>↗ open in vault</button>
+            {t.files && t.files.length > 0 && (
+              <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {t.files.map((f, fi) => (
+                  <button key={fi} onClick={() => onCiteFile && onCiteFile(f)}
+                    style={{ background: 'none', border: '1px solid #2a2520', borderRadius: 2, color: '#c96442', fontSize: 9, cursor: 'pointer', padding: '1px 6px', fontFamily: 'inherit' }}>
+                    ↗ {f.split('/').pop()}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         ))}
