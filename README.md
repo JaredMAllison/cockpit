@@ -47,7 +47,7 @@ React 18 via unpkg CDN + Babel standalone — no build step, no node_modules. Al
 | `panels/ttf.jsx` | TTF calendar week panel |
 | `panels/quickhacks.jsx` | Mode switcher + inbox capture panel |
 | `panels/vault.jsx` | Vault file browser + on-demand preview |
-| `panels/ariel.jsx` | Ariel conversation panel (stubbed until orchestrator API confirmed) |
+| `panels/ariel.jsx` | Ariel/Navi conversation panel — POST /chat, local turn history, file citations, live elapsed timer |
 
 ---
 
@@ -67,13 +67,9 @@ Cockpit serves at `http://0.0.0.0:9100`. Port configurable via `COCKPIT_PORT` en
 
 ## Deploying a new instance (e.g. Jason)
 
-`setup_jason_instance.sh` in the marlin repo handles this:
+Use the Windows USB package in `deploy/windows/`. Run `build-usb.sh <output-dir>` to produce a self-contained bundle with cockpit, LMF orchestrator, Ollama, blank starter vault, and launch/stop/setup scripts. See `deploy/windows/README-setup.txt` for Jason's setup instructions.
 
-```bash
-sudo bash ~/marlin/setup_jason_instance.sh jason
-```
-
-It copies this repo to `/home/jason/git/cockpit/` and overwrites `hooks/api.js` with Jason-specific `HOSTS` pointing to his port-offset services (`:7842`/`:7843`/`:9101`).
+`hooks/api.js` is the only file that changes between instances — `HOSTS` maps each service to its local port.
 
 ---
 
@@ -96,6 +92,8 @@ Templates (preset label sets) are stored alongside user saves. Three built-in te
 | `http://localhost:7833/api/vault/tree` | Vault |
 | `http://localhost:7833/api/vault/file?path=...` | Vault |
 | `http://localhost:3000/api/events?from=...&to=...` | TTF |
-| `http://localhost:8742` | Ariel (stubbed) |
+| `http://localhost:8742/chat` | Ariel — POST chat, GET health, GET status |
+| `http://localhost:8742/health` | Ariel online indicator |
+| `http://localhost:8742/status` | Ariel model/inference state |
 
 All ports configurable in `hooks/api.js` — change `HOSTS` to match your deployment.

@@ -2,12 +2,21 @@
 
 ---
 
-## BUG-001 — Corner flourishes hidden behind inner content box
+## BUG-001 — Corner flourishes hidden behind inner content box ✓ FIXED
 
 **Screen:** All (Items shown in screenshot)
 **Symptom:** OoT chrome corner ornaments not visible at content pane corners.
 **Root cause:** `zelda-frame.jsx:128–131` — corner wrapper divs are painted before the inner black box (line 132) in DOM order. The inner box has `position: relative`, creating a stacking context that paints over the corners wherever they overlap.
 **Fix:** Add `zIndex: 2` to each corner wrapper div.
+
+---
+
+## BUG-001b — Corner flourishes misaligned (right/bottom corners displaced) ✓ FIXED
+
+**Screen:** All
+**Symptom:** After BUG-001 fix made corners visible, right and bottom corners appeared displaced ~36px off the frame edges. Top-left appeared correct.
+**Root cause:** `CornerFlourish` SVG had `position: absolute` which removed it from flow, collapsing the wrapper div to 0×0. For right/bottom-anchored wrappers (`right: -4`, `bottom: -4`), the SVG then anchored from the wrong edge. Left-side corners appeared correct by coincidence.
+**Fix:** Replace `position: 'absolute'` with `display: 'block'` on the SVG — keeps it in flow so the wrapper sizes correctly to 36×36 and all four corners land on the frame.
 
 ---
 
