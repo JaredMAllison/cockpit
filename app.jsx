@@ -22,7 +22,7 @@ const ItemsScreen = ({ arielFile, setArielFile, setActive }) => (
       <VaultPanel highlightedFile={arielFile} />
     </div>
     <div style={{ flex: 1 }}>
-      <ArielPanel onCiteFile={(path) => { setArielFile(path); setActive('items'); }} />
+      <ArielGroqPanel onCiteFile={(path) => { setArielFile(path); setActive('items'); }} />
     </div>
   </div>
 );

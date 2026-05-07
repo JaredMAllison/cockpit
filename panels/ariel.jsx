@@ -43,12 +43,16 @@ function ArielPanel({ onCiteFile }) {
     setInput('');
     setTurns(prev => [...prev, { role: 'user', time: timeStr(), text: msg }]);
     setLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1_200_000); // 20 min
     try {
       const data = await fetch(`${HOSTS.ariel}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg }),
+        signal: controller.signal,
       }).then(r => r.json());
+      clearTimeout(timer);
       const text = data.response || data.error || 'no response';
       const ms = data.response_ms;
       const files = data.files_read || [];
@@ -56,6 +60,7 @@ function ArielPanel({ onCiteFile }) {
     } catch (e) {
       setTurns(prev => [...prev, { role: 'ariel', time: timeStr(), text: `[error: ${e.message}]` }]);
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
   }, [input, loading]);
