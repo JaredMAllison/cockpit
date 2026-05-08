@@ -2,11 +2,12 @@
 
 Called by bootstrap.ps1 after initial file copy and config creation.
 Prompts the operator for vault display name, AI assistant name,
-and optional PDF knowledge base path.
+optional PDF knowledge base path, and init persona preferences.
 
 Writes:
-- cockpit/app-config.js  — web UI instance branding
-- lmf/operator/config.yaml — orchestrator config (via yaml.dump for safe quoting)
+- cockpit/app-config.js     — web UI instance branding
+- lmf/operator/deploy.yaml  — init persona config (instance_name, trust_profile, onboarding_mode)
+- lmf/operator/config.yaml  — orchestrator config (via yaml.dump for safe quoting)
 """
 
 import os
@@ -110,6 +111,28 @@ def prompt_str(label, default):
     return val if val else default
 
 
+def prompt_choice(label, choices, default):
+    """Prompt for a choice from a list. Enter the exact value or accept default."""
+    joined = "/".join(choices)
+    val = input(f"{label} ({joined}) [{default}]: ").strip().lower()
+    if val in choices:
+        return val
+    return default
+
+
+def write_deploy_config(lmf_dir, instance_name, trust_profile, onboarding_mode):
+    config_dir = Path(lmf_dir) / "operator"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    dest = config_dir / "deploy.yaml"
+    cfg = {
+        "instance_name": instance_name,
+        "trust_profile": trust_profile,
+        "onboarding_mode": onboarding_mode,
+    }
+    dest.write_text(yaml.dump(cfg, default_flow_style=False, sort_keys=False), encoding="utf-8")
+    return dest
+
+
 def write_app_config(cockpit_dir, vault_name, ai_name):
     dest = Path(cockpit_dir) / "app-config.js"
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -181,6 +204,11 @@ def main():
         print(f"  Warning: path does not exist or is not a directory: {kb_path}")
         kb_path = None
 
+    # Deploy config for init persona
+    instance_name = prompt_str("Instance name", "LMF")
+    trust_profile = prompt_choice("Trust profile", ["personal", "professional", "mixed"], "personal")
+    onboarding_mode = prompt_choice("Onboarding mode", ["guided", "quick", "skip"], "guided")
+
     write_app_config(cockpit_dir, vault_name, ai_name)
     print(f"  Cockpit config: {cockpit_dir / 'app-config.js'}")
 
@@ -190,11 +218,16 @@ def main():
     else:
         print(f"  Operator config exists — skipped")
 
-    print(f"\nVault: {vault_name}")
-    print(f"AI:    {ai_name}")
-    print(f"Model: {model}")
+    dep_cfg = write_deploy_config(lmf_dir, instance_name, trust_profile, onboarding_mode)
+    print(f"  Deploy config: {dep_cfg}")
+
+    print(f"\nInstance: {instance_name}")
+    print(f"Profile:  {trust_profile} ({onboarding_mode})")
+    print(f"Vault:    {vault_name}")
+    print(f"AI:       {ai_name}")
+    print(f"Model:    {model}")
     if kb_path:
-        print(f"KB:    {kb_path}")
+        print(f"KB:       {kb_path}")
     print("\nSetup complete. You can now launch LMF.\n")
 
 
