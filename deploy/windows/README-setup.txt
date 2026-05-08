@@ -3,6 +3,11 @@ LMF — SETUP GUIDE
 
 FIRST-TIME SETUP (do once, from the USB):
 
+0. AUTO-DOWNLOAD (optional — skips steps 1-2)
+   Double-click: download-deps.bat
+   Downloads Python embeddable + Ollama binary automatically (~55 MB).
+   Then proceed to step 3.
+
 1. PYTHON (if not already in the python\ folder)
    Download: https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip
    Extract the zip CONTENTS into the "python\" folder next to setup.bat.
@@ -20,6 +25,7 @@ FIRST-TIME SETUP (do once, from the USB):
 3. RUN SETUP
    Double-click: setup.bat
    Installs LMF to C:\Users\<you>\LMF and creates a desktop shortcut.
+   A setup wizard will ask for your vault display name and AI assistant name.
    No admin rights required. No execution policy changes needed.
 
 4. DOWNLOAD AI MODELS
@@ -49,3 +55,4 @@ TROUBLESHOOTING:
      If it does, right-click setup.bat and choose "Run as administrator".
    - Services didn't start: confirm pull-models.bat completed successfully.
    - Vault path wrong: edit C:\Users\<you>\LMF\lmf\operator\config.yaml
+   - Re-run setup wizard: python C:\Users\<you>\LMF\init.py

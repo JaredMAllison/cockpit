@@ -40,6 +40,26 @@ if (-not (Test-Path "$USB\python\get-pip.py")) {
     exit 1
 }
 
+# Resource preflight
+Write-Step "Checking system resources..."
+$ramGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+$drive = Split-Path $InstallDir -Qualifier
+$diskGB = [math]::Round((Get-PSDrive $drive).Free / 1GB, 1)
+Write-Host "  RAM:  ${ramGB} GB"
+Write-Host "  Disk: ${diskGB} GB free (on $drive)"
+
+$blocking = @()
+if ($ramGB -lt 4)   { $blocking += "RAM too low ($ramGB GB) — minimum 4 GB required" }
+if ($diskGB -lt 5)  { $blocking += "Disk space too low ($diskGB GB free) — minimum 5 GB needed" }
+if ($blocking.Count -gt 0) {
+    Write-Host ""
+    foreach ($b in $blocking) { Write-Host "  FAIL: $b" -ForegroundColor Red }
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+if ($ramGB -lt 8)   { Write-Host "  NOTE: RAM under 8 GB — will use lightweight model (qwen2.5:3b)" -ForegroundColor Yellow }
+if ($diskGB -lt 15) { Write-Host "  NOTE: Low disk space — models need ~6 GB, proceed with caution" -ForegroundColor Yellow }
+
 # ---------- Create install directory structure ----------
 
 Write-Step "Creating install directory: $InstallDir"
@@ -59,9 +79,11 @@ Write-Step "Copying Cockpit..."
 Copy-Item -Recurse -Force "$USB\cockpit\*" "$InstallDir\cockpit\"
 
 Write-Step "Copying starter vault..."
-# Only copy vault if it hasn't been customized yet
-if (-not (Test-Path "$InstallDir\vault\Inbox.md")) {
+$vaultMarker = "$InstallDir\vault\.lmf-initialized"
+if (-not (Test-Path $vaultMarker)) {
     Copy-Item -Recurse -Force "$USB\vault\*" "$InstallDir\vault\"
+    Set-Content -Path $vaultMarker -Value "Initialized $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -Encoding UTF8
+    Write-Host "  Vault created with starter files."
 } else {
     Write-Host "  Existing vault detected — skipping vault copy to preserve your notes."
 }
@@ -131,6 +153,12 @@ allow_external_writes: false
     Write-Host "  Config already exists — skipping. Edit manually if needed:"
     Write-Host "  $configDest"
 }
+
+# ---------- Run setup wizard (init.py) ----------
+
+Write-Step "Running setup wizard..."
+& "$InstallDir\python\python.exe" "$USB\init.py" "$InstallDir"
+Copy-Item -Force "$USB\init.py" "$InstallDir\init.py"
 
 # ---------- Copy launch scripts to install dir ----------
 

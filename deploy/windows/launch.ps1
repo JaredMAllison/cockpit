@@ -5,10 +5,32 @@
 $ErrorActionPreference = "Stop"
 $InstallDir = "$env:USERPROFILE\LMF"
 
+function Write-Step($msg) {
+    Write-Host ""
+    Write-Host ">>> $msg" -ForegroundColor Cyan
+}
+
 function Fail($msg) {
     Write-Host "ERROR: $msg" -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit 1
+}
+
+function Test-Port($hostname, $port, $label) {
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $async = $tcp.BeginConnect($hostname, $port, $null, $null)
+        $wait = $async.AsyncWaitHandle.WaitOne(3000)
+        if ($wait -and $tcp.Connected) {
+            Write-Host "  $label — OK" -ForegroundColor Green
+            $tcp.Close()
+            return $true
+        }
+        $tcp.Close()
+        return $false
+    } catch {
+        return $false
+    }
 }
 
 if (-not (Test-Path "$InstallDir\python\python.exe")) { Fail "LMF not installed. Run setup.bat from the USB first." }
@@ -24,21 +46,39 @@ Write-Host "=== LMF ===" -ForegroundColor Yellow
 
 Write-Host "Starting Ollama..." -ForegroundColor Cyan
 Start-Process -FilePath "$InstallDir\ollama\ollama.exe" -ArgumentList "serve" -WindowStyle Hidden
-Start-Sleep -Seconds 4
+for ($i = 0; $i -lt 8; $i++) {
+    if (Test-Port "localhost" 11434) { break }
+    Start-Sleep -Seconds 1
+}
 
 Write-Host "Starting LMF orchestrator..." -ForegroundColor Cyan
 Start-Process -FilePath "$InstallDir\python\python.exe" `
     -ArgumentList "$InstallDir\lmf\core\orchestrator.py" `
     -WorkingDirectory "$InstallDir\lmf" `
     -WindowStyle Hidden
-Start-Sleep -Seconds 3
+for ($i = 0; $i -lt 6; $i++) {
+    if (Test-Port "localhost" 8742) { break }
+    Start-Sleep -Seconds 1
+}
 
 Write-Host "Starting Cockpit..." -ForegroundColor Cyan
 Start-Process -FilePath "$InstallDir\python\python.exe" `
     -ArgumentList "$InstallDir\cockpit\cockpit.py" `
     -WorkingDirectory "$InstallDir\cockpit" `
     -WindowStyle Hidden
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 1
+
+Write-Step "Health check — verifying all services..."
+$allOk = $true
+if (-not (Test-Port "localhost" 11434 "Ollama"))         { Write-Host "  Ollama — NOT OK" -ForegroundColor Red; $allOk = $false }
+if (-not (Test-Port "localhost" 8742   "LMF orchestrator")) { Write-Host "  LMF — NOT OK" -ForegroundColor Red; $allOk = $false }
+if (-not (Test-Port "localhost" 9100   "Cockpit"))       { Write-Host "  Cockpit — NOT OK" -ForegroundColor Red; $allOk = $false }
+
+if (-not $allOk) {
+    Write-Host ""
+    Write-Host "WARNING: Some services did not start." -ForegroundColor Yellow
+    Write-Host "Check the logs and try again, or run teardown.bat to clean up." -ForegroundColor Yellow
+}
 
 Write-Host "Opening browser..." -ForegroundColor Cyan
 Start-Process "http://localhost:9100"

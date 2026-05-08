@@ -1,6 +1,6 @@
 // app.jsx — root component: sub-screen state, keyboard nav, editMode, LabelsProvider
 
-const SUBSCREEN_IDS = ['quest', 'map', 'items'];
+const SUBSCREEN_IDS = ['quest', 'map', 'items', 'terminal'];
 
 const QuestStatus = () => (
   <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -16,19 +16,23 @@ const MapScreen = () => (
   </div>
 );
 
+const TerminalScreen = () => (
+  <TerminalPanel />
+);
+
 const ItemsScreen = ({ arielFile, setArielFile, setActive }) => (
   <div style={{ display: 'flex', width: '100%', height: '100%' }}>
     <div style={{ flex: '0 0 52%', borderRight: '1px solid #1d1a16' }}>
       <VaultPanel highlightedFile={arielFile} />
     </div>
     <div style={{ flex: 1 }}>
-      <ArielGroqPanel onCiteFile={(path) => { setArielFile(path); setActive('items'); }} />
+      <AiChatPanel onCiteFile={(path) => { setArielFile(path); setActive('items'); }} />
     </div>
   </div>
 );
 
 function App() {
-  const [active, setActive]         = React.useState('quest');
+  const [active, setActive]         = React.useState('terminal');
   const [editMode, setEditMode]     = React.useState(false);
   const [arielFile, setArielFile]   = React.useState(null);
   const [optimisticMode, setOptimisticMode] = React.useState(null);
@@ -51,6 +55,7 @@ function App() {
       if (e.key === '1') setActive('quest');
       else if (e.key === '2') setActive('map');
       else if (e.key === '3') setActive('items');
+      else if (e.key === '4') setActive('terminal');
       else if (e.key === 'ArrowRight' || e.key === ']') setActive(SUBSCREEN_IDS[Math.min(idx + 1, SUBSCREEN_IDS.length - 1)]);
       else if (e.key === 'ArrowLeft'  || e.key === '[') setActive(SUBSCREEN_IDS[Math.max(idx - 1, 0)]);
       else if (e.key === 'e') setEditMode(em => !em);
@@ -60,9 +65,10 @@ function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [active]);
 
-  const content = active === 'quest' ? <QuestStatus /> :
-                  active === 'map'   ? <MapScreen /> :
-                  <ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} />;
+  const content = active === 'quest'     ? <QuestStatus /> :
+                  active === 'map'       ? <MapScreen /> :
+                  active === 'items'     ? <ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} /> :
+                  <TerminalScreen />;
 
   return (
     <LabelsProvider editing={editMode}>
@@ -74,3 +80,6 @@ function App() {
     </LabelsProvider>
   );
 }
+
+const mountRoot = ReactDOM.createRoot(document.getElementById('root'));
+mountRoot.render(<App />);
