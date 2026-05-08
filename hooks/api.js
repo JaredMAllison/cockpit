@@ -4,8 +4,8 @@
 const HOSTS = {
   marlin:   'http://localhost:7832',
   projects: 'http://localhost:7833',
-  ttf:      'http://localhost:3000',
-  ariel:    'http://localhost:8742',
+  ttf:      'http://localhost:8000',
+  ariel:    'http://localhost:8002',
 };
 
 function _fetch(url) {
@@ -28,15 +28,62 @@ function fetchVaultFile(path) {
       return r.text();  // vault files are markdown text, not JSON
     });
 }
-function fetchTtfEvents() {
-  const d     = new Date();
-  const pad   = n => String(n).padStart(2, '0');
-  const today = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const end   = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
-  const week  = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}`;
-  return _fetch(`${HOSTS.ttf}/api/events?from=${today}&to=${week}`);
+function fetchProjectsTree()  { return _fetch(`${HOSTS.projects}/api/projects/tree`); }
+function fetchProjectFile(pid, rel) {
+  const url = `${HOSTS.projects}/api/projects/${pid}/file?path=${encodeURIComponent(rel)}`;
+  return fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
+      return r.text();
+    });
 }
-function markAdlDone(title) {
-  return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(title)}`, { redirect: 'manual' })
-    .catch(() => {});
+function fetchProjectAdls(pid) { return _fetch(`${HOSTS.projects}/api/projects/${pid}/adls`); }
+function fetchProjectTasks(pid) { return _fetch(`${HOSTS.projects}/api/projects/${pid}/tasks`); }
+function fetchProjectEvents(pid) { return _fetch(`${HOSTS.projects}/api/projects/${pid}/events`); }
+function fetchTtfEvents(from, to) { return _fetch(`${HOSTS.ttf}/api/events?from=${from}&to=${to}`); }
+function postTtfEvent(event) {
+  return fetch(`${HOSTS.ttf}/api/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event),
+  });
 }
+function patchTtfEvent(id, changes) {
+  return fetch(`${HOSTS.ttf}/api/events/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(changes),
+  });
+}
+function deleteTtfEvent(id) {
+  return fetch(`${HOSTS.ttf}/api/events/${id}`, { method: 'DELETE' });
+}
+function fetchMarlinMode() { return _fetch(`${HOSTS.marlin}/mode`); }
+function postMarlinMode(id) {
+  return fetch(`${HOSTS.marlin}/mode?set=${id}`, { method: 'GET', redirect: 'manual' });
+}
+function fetchMarlinDone(task) {
+  return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(task)}`, { redirect: 'manual' });
+}
+function fetchMarlinDefer(task) {
+  return fetch(`${HOSTS.marlin}/defer?task=${encodeURIComponent(task)}`, { redirect: 'manual' });
+}
+function fetchMarlinSnooze(task, minutes) {
+  return fetch(`${HOSTS.marlin}/snooze?task=${encodeURIComponent(task)}&minutes=${minutes}`, { redirect: 'manual' });
+}
+function fetchMarlinTodayTasks() { return _fetch(`${HOSTS.marlin}/tasks/today`); }
+function fetchMarlinAdlLog() { return _fetch(`${HOSTS.marlin}/api/adl-log`); }
+function fetchMarlinAdlToday() { return _fetch(`${HOSTS.marlin}/api/adl-today`); }
+function fetchMarlinProjects() { return _fetch(`${HOSTS.marlin}/api/projects`); }
+function fetchMarlinProjectTree(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/tree`); }
+function fetchMarlinProjectFile(pid, rel) {
+  const url = `${HOSTS.marlin}/api/projects/${pid}/file?path=${encodeURIComponent(rel)}`;
+  return fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
+      return r.text();
+    });
+}
+function fetchMarlinProjectAdls(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/adls`); }
+function fetchMarlinProjectTasks(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/tasks`); }
+function fetchMarlinProjectEvents(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/events`); }
