@@ -110,6 +110,37 @@ def prompt_str(label, default):
     return val if val else default
 
 
+TRUST_PROFILES = {"personal", "professional", "mixed"}
+ONBOARDING_MODES = {"guided", "quick", "skip"}
+
+
+def prompt_trust_profile(default="personal"):
+    val = input(f"Trust profile (personal/professional/mixed) [{default}]: ").strip().lower()
+    if val in TRUST_PROFILES:
+        return val
+    return default
+
+
+def prompt_onboarding_mode(default="guided"):
+    val = input(f"Onboarding mode (guided/quick/skip) [{default}]: ").strip().lower()
+    if val in ONBOARDING_MODES:
+        return val
+    return default
+
+
+def write_deploy_config(lmf_dir, instance_name, trust_profile, onboarding_mode):
+    config_dir = Path(lmf_dir) / "operator"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    dest = config_dir / "deploy.yaml"
+    cfg = {
+        "instance_name": instance_name,
+        "trust_profile": trust_profile,
+        "onboarding_mode": onboarding_mode,
+    }
+    dest.write_text(yaml.dump(cfg, default_flow_style=False, sort_keys=False), encoding="utf-8")
+    return dest
+
+
 def write_app_config(cockpit_dir, vault_name, ai_name):
     dest = Path(cockpit_dir) / "app-config.js"
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -174,6 +205,10 @@ def main():
 
     model = suggest_model(ram_gb)
 
+    instance_name = prompt_str("Instance name", "LMF")
+    trust_profile = prompt_trust_profile()
+    onboarding_mode = prompt_onboarding_mode()
+
     vault_name = prompt_str("Vault display name", "Jedi_Archives")
     ai_name = prompt_str("AI assistant name", "Jocasta_Nu")
     kb_path = input("PDF knowledge base path (leave blank to skip): ").strip() or None
@@ -190,7 +225,13 @@ def main():
     else:
         print(f"  Operator config exists — skipped")
 
-    print(f"\nVault: {vault_name}")
+    deploy_cfg = write_deploy_config(lmf_dir, instance_name, trust_profile, onboarding_mode)
+    print(f"  Deploy config: {deploy_cfg}")
+
+    print(f"\nInstance: {instance_name}")
+    print(f"Trust profile: {trust_profile}")
+    print(f"Onboarding: {onboarding_mode}")
+    print(f"Vault: {vault_name}")
     print(f"AI:    {ai_name}")
     print(f"Model: {model}")
     if kb_path:
