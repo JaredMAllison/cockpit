@@ -19,11 +19,12 @@ const MODE_COLORS = {
 };
 
 const SUBS = [
-  { id: 'quest',    fallback: 'Quest Status', s: 's1', hotkey: '1' },
-  { id: 'map',      fallback: 'Map',          s: 's2', hotkey: '2' },
-  { id: 'items',    fallback: 'Items',        s: 's3', hotkey: '3' },
-  { id: 'terminal', fallback: 'Magic',        s: 's4', hotkey: '4' },
-  { id: 'magic',    fallback: 'Summons',      s: 's5', hotkey: '5' },
+  { id: 'quest',    fallback: 'Quest Status',  s: 's1', hotkey: '1' },
+  { id: 'map',      fallback: 'Map',           s: 's2', hotkey: '2' },
+  { id: 'items',    fallback: 'Items',         s: 's3', hotkey: '3' },
+  { id: 'terminal', fallback: 'Magic',         s: 's4', hotkey: '4' },
+  { id: 'magic',    fallback: 'Summons',       s: 's5', hotkey: '5' },
+  { id: 'ink',      fallback: 'Ink Blotter',   s: 's6', hotkey: '6' },
 ];
 
 function CornerFlourish({ rotation = 0, size = 36 }) {
