@@ -81,6 +81,12 @@ Templates (preset label sets) are stored alongside user saves. Three built-in te
 
 ---
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+---
+
 ## Backend APIs consumed
 
 | Endpoint | Panel |
