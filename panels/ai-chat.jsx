@@ -96,6 +96,7 @@ function AiChatPanel({ onCiteFile }) {
   const [elapsed, setElapsed] = React.useState(0);
   const [apiKey, setApiKey] = React.useState(() => localStorage.getItem(KEY_MAP[provider]) || '');
   const [rateLimited, setRateLimited] = React.useState(false);
+  const [turbo, setTurbo] = React.useState(false);
   const scrollRef = React.useRef(null);
   const startRef = React.useRef(null);
 
@@ -174,6 +175,16 @@ function AiChatPanel({ onCiteFile }) {
 
   const noKey = !apiKey;
 
+  const toggleTurbo = React.useCallback(async () => {
+    try {
+      const resp = await fetch('http://localhost:8002/turbo', { method: 'POST' });
+      const data = await resp.json();
+      setTurbo(data.turbo);
+    } catch {
+      setTurbo(t => !t);
+    }
+  }, []);
+
   const statusColor = () => {
     if (noKey) return '#c95a52';
     if (loading) return '#d4a84a';
@@ -202,6 +213,9 @@ function AiChatPanel({ onCiteFile }) {
             <option value="cerebras">cerebras</option>
             <option value="groq">groq</option>
           </select>
+          <button onClick={toggleTurbo} title={turbo ? 'Disable turbo (pacing ON)' : 'Enable turbo (remove pacing delay)'} style={{ background: turbo ? '#5a4d24' : '#16130f', border: `1px solid ${turbo ? '#d4b76a' : '#2a2520'}`, borderRadius: 3, padding: '2px 8px', color: turbo ? '#d4b76a' : '#5a5249', fontSize: 9, fontFamily: 'inherit', cursor: 'pointer', letterSpacing: 0.5 }}>
+            {turbo ? '⚡TURBO' : 'pacing'}
+          </button>
         </div>
         <span style={{ fontSize: 9, color: statusColor() }}>{statusText()}</span>
       </div>
