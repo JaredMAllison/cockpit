@@ -1,5 +1,8 @@
 # Cognitive Prosthetic Cockpit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![JavaScript](https://img.shields.io/badge/javascript-ES6+-yellow.svg)](package.json)
+
 Unified HUD for the Marlin/LMF stack. OoT Zelda aesthetic. Three sub-screens. No build step.
 
 Served by `cockpit.py` (Python `http.server` static file server) at port 9100. All UI is React via Babel CDN — edit and reload, no compilation.
