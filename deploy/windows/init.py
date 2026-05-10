@@ -197,6 +197,8 @@ def main():
 
     model = suggest_model(ram_gb)
 
+    instance_name = prompt_str("Instance name", "LMF")
+
     vault_name = prompt_str("Vault display name", "Jedi_Archives")
     ai_name = prompt_str("AI assistant name", "Jocasta_Nu")
     kb_path = input("PDF knowledge base path (leave blank to skip): ").strip() or None
