@@ -72,6 +72,9 @@ function fetchMarlinSnooze(task, minutes) {
   return fetch(`${HOSTS.marlin}/snooze?task=${encodeURIComponent(task)}&minutes=${minutes}`, { redirect: 'manual' });
 }
 function fetchMarlinTodayTasks() { return _fetch(`${HOSTS.marlin}/tasks/today`); }
+function markAdlDone(title) {
+  return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(title)}`, { redirect: 'manual' }).catch(() => {});
+}
 function fetchMarlinAdlLog() { return _fetch(`${HOSTS.marlin}/api/adl-log`); }
 function fetchMarlinAdlToday() { return _fetch(`${HOSTS.marlin}/api/adl-today`); }
 function fetchMarlinProjects() { return _fetch(`${HOSTS.marlin}/api/projects`); }
@@ -87,3 +90,19 @@ function fetchMarlinProjectFile(pid, rel) {
 function fetchMarlinProjectAdls(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/adls`); }
 function fetchMarlinProjectTasks(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/tasks`); }
 function fetchMarlinProjectEvents(pid) { return _fetch(`${HOSTS.marlin}/api/projects/${pid}/events`); }
+
+// InkBlotter write API — goes to cockpit server (port 9100)
+function writeVaultFile(path, content) {
+  return fetch(`/api/vault/write`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content }),
+  }).then(r => r.json());
+}
+function appendInbox(text) {
+  return fetch(`/api/vault/append-inbox`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  }).then(r => r.json());
+}

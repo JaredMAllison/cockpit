@@ -13,7 +13,21 @@ function TtfPanel(props) {
   const bobbing    = tweaks.bobbing !== false;
 
   const H = window.TTF_helpers;
-  const { data, error } = usePoll(fetchTtfEvents, 30000);
+
+  // Date range — computed early so fetchRef can capture current values
+  const today = H.todayStr();
+  function dayOffsetToDateStr(off) {
+    const d = H.parseDate(today);
+    d.setDate(d.getDate() + off);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  const fromStr = dayOffsetToDateStr(-3);
+  const toStr   = dayOffsetToDateStr(10);
+  const ttfFetchRef = React.useRef(() => fetchTtfEvents(fromStr, toStr));
+  ttfFetchRef.current = () => fetchTtfEvents(fromStr, toStr);
+
+  const { data, error } = usePoll(() => ttfFetchRef.current(), 30000);
   const events = data || [];
 
   const containerRef = React.useRef(null);
@@ -43,15 +57,6 @@ function TtfPanel(props) {
   }, []);
   const { shift: beltShift, sway } = ctrl.get();
 
-  const today = H.todayStr();
-  function dayOffsetToDateStr(off) {
-    const d = H.parseDate(today);
-    d.setDate(d.getDate() + off);
-    const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  }
-  const fromStr = dayOffsetToDateStr(-3);
-  const toStr   = dayOffsetToDateStr(10);
   const byDay = H.groupByDay(events, fromStr, toStr);
 
   return (

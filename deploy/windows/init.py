@@ -2,11 +2,12 @@
 
 Called by bootstrap.ps1 after initial file copy and config creation.
 Prompts the operator for vault display name, AI assistant name,
-and optional PDF knowledge base path.
+optional PDF knowledge base path, and init persona preferences.
 
 Writes:
-- cockpit/app-config.js  — web UI instance branding
-- lmf/operator/config.yaml — orchestrator config (via yaml.dump for safe quoting)
+- cockpit/app-config.js     — web UI instance branding
+- lmf/operator/deploy.yaml  — init persona config (instance_name, trust_profile, onboarding_mode)
+- lmf/operator/config.yaml  — orchestrator config (via yaml.dump for safe quoting)
 """
 
 import os
@@ -110,20 +111,11 @@ def prompt_str(label, default):
     return val if val else default
 
 
-TRUST_PROFILES = {"personal", "professional", "mixed"}
-ONBOARDING_MODES = {"guided", "quick", "skip"}
-
-
-def prompt_trust_profile(default="personal"):
-    val = input(f"Trust profile (personal/professional/mixed) [{default}]: ").strip().lower()
-    if val in TRUST_PROFILES:
-        return val
-    return default
-
-
-def prompt_onboarding_mode(default="guided"):
-    val = input(f"Onboarding mode (guided/quick/skip) [{default}]: ").strip().lower()
-    if val in ONBOARDING_MODES:
+def prompt_choice(label, choices, default):
+    """Prompt for a choice from a list. Enter the exact value or accept default."""
+    joined = "/".join(choices)
+    val = input(f"{label} ({joined}) [{default}]: ").strip().lower()
+    if val in choices:
         return val
     return default
 
@@ -206,8 +198,6 @@ def main():
     model = suggest_model(ram_gb)
 
     instance_name = prompt_str("Instance name", "LMF")
-    trust_profile = prompt_trust_profile()
-    onboarding_mode = prompt_onboarding_mode()
 
     vault_name = prompt_str("Vault display name", "Jedi_Archives")
     ai_name = prompt_str("AI assistant name", "Jocasta_Nu")
@@ -215,6 +205,11 @@ def main():
     if kb_path and not os.path.isdir(kb_path):
         print(f"  Warning: path does not exist or is not a directory: {kb_path}")
         kb_path = None
+
+    # Deploy config for init persona
+    instance_name = prompt_str("Instance name", "LMF")
+    trust_profile = prompt_choice("Trust profile", ["personal", "professional", "mixed"], "personal")
+    onboarding_mode = prompt_choice("Onboarding mode", ["guided", "quick", "skip"], "guided")
 
     write_app_config(cockpit_dir, vault_name, ai_name)
     print(f"  Cockpit config: {cockpit_dir / 'app-config.js'}")
@@ -225,17 +220,16 @@ def main():
     else:
         print(f"  Operator config exists — skipped")
 
-    deploy_cfg = write_deploy_config(lmf_dir, instance_name, trust_profile, onboarding_mode)
-    print(f"  Deploy config: {deploy_cfg}")
+    dep_cfg = write_deploy_config(lmf_dir, instance_name, trust_profile, onboarding_mode)
+    print(f"  Deploy config: {dep_cfg}")
 
     print(f"\nInstance: {instance_name}")
-    print(f"Trust profile: {trust_profile}")
-    print(f"Onboarding: {onboarding_mode}")
-    print(f"Vault: {vault_name}")
-    print(f"AI:    {ai_name}")
-    print(f"Model: {model}")
+    print(f"Profile:  {trust_profile} ({onboarding_mode})")
+    print(f"Vault:    {vault_name}")
+    print(f"AI:       {ai_name}")
+    print(f"Model:    {model}")
     if kb_path:
-        print(f"KB:    {kb_path}")
+        print(f"KB:       {kb_path}")
     print("\nSetup complete. You can now launch LMF.\n")
 
 

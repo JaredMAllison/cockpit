@@ -1,5 +1,8 @@
 # Cognitive Prosthetic Cockpit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![JavaScript](https://img.shields.io/badge/javascript-ES6+-yellow.svg)](package.json)
+
 Unified HUD for the Marlin/LMF stack. OoT Zelda aesthetic. Three sub-screens. No build step.
 
 Served by `cockpit.py` (Python `http.server` static file server) at port 9100. All UI is React via Babel CDN — edit and reload, no compilation.
@@ -78,6 +81,12 @@ Use the Windows USB package in `deploy/windows/`. Run `build-usb.sh <output-dir>
 Press `e` to enter edit mode. Click any label text to rename it. Changes persist in `localStorage` under the key `cockpit_labels`. Press `Escape` to cancel an edit, `Enter` to confirm.
 
 Templates (preset label sets) are stored alongside user saves. Three built-in templates ship: **OoT Faithful**, **Cockpit Default**, **Plain English**.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ---
 
