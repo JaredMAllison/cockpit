@@ -46,18 +46,18 @@ function ServiceLights() {
             }}
           >
             <div style={{
-              width: 10, height: 10, borderRadius: '50%',
+              width: 15, height: 15, borderRadius: '50%',
               background: color,
               boxShadow: `0 0 6px ${color}, inset 0 0 3px rgba(0,0,0,.4)`,
               border: '1px solid rgba(0,0,0,.3)',
             }} />
             <span style={{
-              fontFamily: ZELDA_FONT_PIXEL, fontSize: 8,
+              fontFamily: ZELDA_FONT_PIXEL, fontSize: 12,
               color, letterSpacing: 0.5, lineHeight: 1, opacity: 0.8,
             }}>{svcAbbrev(svc.name)}</span>
             {open && (
               <div style={{
-                position: 'absolute', bottom: 38, left: '50%', transform: 'translateX(-50%)',
+                position: 'absolute', bottom: 46, left: '50%', transform: 'translateX(-50%)',
                 background: '#060d08', border: `1px solid ${ZELDA.gold}`,
                 color: ZELDA.parchText, fontFamily: ZELDA_FONT_PIXEL, fontSize: 12,
                 padding: '8px 12px', whiteSpace: 'nowrap', zIndex: 200,
