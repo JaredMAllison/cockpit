@@ -66,8 +66,8 @@ buttons/
 - Pressing it (or hitting `` ` ``) toggles the Spellbook popup
 - Spellbook state machine: **Minimized → Quarter → Half → Full**
   - Minimized: iframe in DOM, session alive, `display:none`
-  - Quarter: ~25% of content pane height from bottom
-  - Half: ~50% of content pane height from bottom
+  - Quarter: bottom-right corner (~40% wide, ~30% tall) — panel content remains visible
+  - Half: bottom-right corner (~50% wide, ~50% tall) — panel content partially visible
   - Full: entire content pane (covers rail)
 - Size toggle button inside Spellbook header cycles Quarter → Half → Full → Quarter
 - Close button → Minimized (session preserved)
