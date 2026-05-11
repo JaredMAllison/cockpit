@@ -76,6 +76,8 @@ function App() {
   const [editMode, setEditMode]     = React.useState(false);
   const [arielFile, setArielFile]   = React.useState(null);
   const [optimisticMode, setOptimisticMode] = React.useState(null);
+  const [terminalOpen, setTerminalOpen] = React.useState(false);
+  const [terminalSize, setTerminalSize] = React.useState('quarter');
   const { data: rootState } = usePoll(fetchState, 30000);
   const mode = optimisticMode || rootState?.mode || 'available';
 
@@ -102,6 +104,7 @@ function App() {
       }
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+      if (e.key === '`') { setTerminalOpen(prev => !prev); return; }
       const idx = SUBSCREEN_IDS.indexOf(active);
       if (e.key === '1') setActive('quest');
       else if (e.key === '2') setActive('map');
@@ -123,16 +126,27 @@ function App() {
   return (
     <LabelsProvider editing={editMode}>
       <ZeldaFrame activeSubscreen={active} onSubscreenChange={setActive} mode={mode}>
-        <SubscreenTransition active={active}>
-          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-            <div key="quest"    style={{ position: 'absolute', inset: 0, display: show('quest') }}><QuestStatus /></div>
-            <div key="map"      style={{ position: 'absolute', inset: 0, display: show('map') }}><MapScreen /></div>
-            <div key="items"    style={{ position: 'absolute', inset: 0, display: show('items') }}><ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} /></div>
-            <div key="terminal" style={{ position: 'absolute', inset: 0, display: show('terminal') }}><TerminalScreen /></div>
-            <div key="magic" style={{ position: 'absolute', inset: 0, display: show('magic') }}><MagicScreen /></div>
-            <div key="ink" style={{ position: 'absolute', inset: 0, display: show('ink') }}><InkScreen /></div>
-          </div>
-        </SubscreenTransition>
+        <ButtonRail>
+          <SubscreenTransition active={active}>
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <div key="quest"    style={{ position: 'absolute', inset: 0, display: show('quest') }}><QuestStatus /></div>
+              <div key="map"      style={{ position: 'absolute', inset: 0, display: show('map') }}><MapScreen /></div>
+              <div key="items"    style={{ position: 'absolute', inset: 0, display: show('items') }}><ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} /></div>
+              <div key="terminal" style={{ position: 'absolute', inset: 0, display: show('terminal') }}><TerminalScreen /></div>
+              <div key="magic"    style={{ position: 'absolute', inset: 0, display: show('magic') }}><MagicScreen /></div>
+              <div key="ink"      style={{ position: 'absolute', inset: 0, display: show('ink') }}><InkScreen /></div>
+              <div key="health"   style={{ position: 'absolute', inset: 0, display: show('health') }}><HealthScreen /></div>
+            </div>
+          </SubscreenTransition>
+          <ServiceLights />
+          <InboxField />
+          <TerminalButton
+            open={terminalOpen}
+            size={terminalSize}
+            onToggle={() => setTerminalOpen(prev => !prev)}
+            onSize={setTerminalSize}
+          />
+        </ButtonRail>
       </ZeldaFrame>
     </LabelsProvider>
   );
