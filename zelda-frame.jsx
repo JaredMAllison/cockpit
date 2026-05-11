@@ -19,13 +19,11 @@ const MODE_COLORS = {
 };
 
 const SUBS = [
-  { id: 'quest',    fallback: 'Quest Status',  s: 's1', hotkey: '1' },
-  { id: 'map',      fallback: 'Map',           s: 's2', hotkey: '2' },
-  { id: 'items',    fallback: 'Items',         s: 's3', hotkey: '3' },
-  { id: 'terminal', fallback: 'Magic',         s: 's4', hotkey: '4' },
-  { id: 'magic',    fallback: 'Summons',       s: 's5', hotkey: '5' },
-  { id: 'ink',      fallback: 'Ink Blotter',   s: 's6', hotkey: '6' },
-  { id: 'health',   fallback: 'Health',        s: 's7', hotkey: '7' },
+  { id: 'quest',  fallback: 'Quest Status',  s: 's1', hotkey: '1' },
+  { id: 'map',    fallback: 'Map',           s: 's2', hotkey: '2' },
+  { id: 'items',  fallback: 'Items',         s: 's3', hotkey: '3' },
+  { id: 'ink',    fallback: 'Ink Blotter',   s: 's4', hotkey: '4' },
+  { id: 'health', fallback: 'Health',        s: 's5', hotkey: '5' },
 ];
 
 function CornerFlourish({ rotation = 0, size = 36 }) {
@@ -149,6 +147,7 @@ function ZeldaFrame({ activeSubscreen, onSubscreenChange, mode, children }) {
           <span><kbd style={kbdS}>1</kbd>–<kbd style={kbdS}>{SUBS.length}</kbd> screen</span>
           <span><kbd style={kbdS}>L</kbd>/<kbd style={kbdS}>R</kbd> tab</span>
           <span><kbd style={kbdS}>e</kbd> edit</span>
+          <span><kbd style={kbdS}>`</kbd> spell</span>
         </div>
       </div>
     </div>
