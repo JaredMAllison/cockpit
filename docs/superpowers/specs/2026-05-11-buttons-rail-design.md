@@ -69,7 +69,8 @@ buttons/
   - Quarter: bottom-right corner (~40% wide, ~30% tall) — panel content remains visible
   - Half: bottom-right corner (~50% wide, ~50% tall) — panel content partially visible
   - Full: entire content pane (covers rail)
-- Size toggle button inside Spellbook header cycles Quarter → Half → Full → Quarter
+- Size controls are a **fixed overlay anchored to bottom-right of the content pane** — not inside the Spellbook header. Position and visibility are independent of current Spellbook size. Visible whenever Spellbook is not Minimized.
+- Size controls contain: cycle button (Quarter → Half → Full → Quarter) and a close/minimize button
 - Close button → Minimized (session preserved)
 - Backtick from any context: Minimized ↔ last used size
 
