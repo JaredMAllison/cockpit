@@ -1,0 +1,118 @@
+// buttons/TerminalButton.jsx
+// Spellbook: ttyd popup with four display states.
+// iframe stays in DOM always so terminal session never dies.
+
+const SPELL_SIZES = ['quarter', 'half', 'full'];
+
+function nextSize(s) {
+  return SPELL_SIZES[(SPELL_SIZES.indexOf(s) + 1) % SPELL_SIZES.length];
+}
+
+// Viewport-coordinate boundaries of the ZeldaFrame content pane.
+// Derived from ZeldaFrame: outer div top:102 left:32 right:32 bottom:56
+// + 3px border + 14px padding + 1px inner border = 18px per edge
+const FRAME = { top: 120, right: 50, bottom: 74, left: 50 };
+const RAIL_H = 38; // bottom rail height — Spellbook quarter/half sit above it
+
+function spellbookStyle(size) {
+  const base = {
+    position: 'fixed', zIndex: 1000,
+    background: ZELDA.feltOuter,
+    border: `2px solid ${ZELDA.goldDeep}`,
+    boxShadow: `0 0 0 1px ${ZELDA.gold}, 0 8px 32px rgba(0,0,0,.7)`,
+    overflow: 'hidden',
+  };
+  if (size === 'quarter') return { ...base, right: FRAME.right + 4, bottom: FRAME.bottom + RAIL_H + 4, width: '40vw', height: '28vh' };
+  if (size === 'half')    return { ...base, right: FRAME.right + 4, bottom: FRAME.bottom + RAIL_H + 4, width: '50vw', height: '48vh' };
+  // full — covers entire content pane including rail
+  return { ...base, top: FRAME.top, left: FRAME.left, right: FRAME.right, bottom: FRAME.bottom };
+}
+
+function TerminalButton({ open, size, onToggle, onSize }) {
+  const initialized = React.useRef(false);
+
+  // Lazy-initialize iframe on first open
+  if (open && !initialized.current) initialized.current = true;
+
+  const slot = useButtonRailSlot('bottom');
+
+  // Rail button
+  const railBtn = slot ? ReactDOM.createPortal(
+    <button
+      onClick={onToggle}
+      style={{
+        order: 3,
+        background: open ? ZELDA.tabBgActive : ZELDA.tabBg,
+        border: `1px solid ${open ? ZELDA.gold : ZELDA.goldDeep}`,
+        color: open ? ZELDA.parchText : ZELDA.parchTextDim,
+        fontFamily: ZELDA_FONT_PIXEL, fontSize: 13, letterSpacing: 1,
+        padding: '3px 12px', cursor: 'pointer', height: 26,
+        boxShadow: open ? `0 0 8px ${ZELDA.cursorGlow}` : 'none',
+        transition: 'all 0.12s',
+      }}
+    >
+      SPELL
+    </button>,
+    slot
+  ) : null;
+
+  // Spellbook iframe — always in DOM after first open, hidden when minimized
+  const spellbook = initialized.current ? ReactDOM.createPortal(
+    <div style={{ ...spellbookStyle(size), display: open ? 'block' : 'none' }}>
+      <iframe
+        src="http://localhost:7682"
+        style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+        title="Spellbook"
+      />
+    </div>,
+    document.body
+  ) : null;
+
+  // Size controls — visible whenever open (not minimized)
+  const ctrlBtnStyle = {
+    background: ZELDA.tabBg, border: `1px solid ${ZELDA.goldDeep}`,
+    color: ZELDA.parchTextDim, fontFamily: ZELDA_FONT_PIXEL, fontSize: 11,
+    padding: '2px 8px', cursor: 'pointer',
+    transition: 'all 0.1s',
+  };
+
+  const sizeLabel = { quarter: '¼', half: '½', full: '↗' };
+
+  const controls = open ? ReactDOM.createPortal(
+    <div style={{
+      position: 'fixed', zIndex: 1002,
+      right: FRAME.right + 8, bottom: FRAME.bottom + 8,
+      display: 'flex', gap: 4, alignItems: 'center',
+      background: ZELDA.feltOuter,
+      border: `1px solid ${ZELDA.goldDeep}`,
+      padding: '3px 6px',
+      boxShadow: '0 2px 8px rgba(0,0,0,.5)',
+    }}>
+      <button
+        onClick={() => onSize(nextSize(size))}
+        style={ctrlBtnStyle}
+        title={`Switch to ${nextSize(size)}`}
+      >
+        {sizeLabel[size]}
+      </button>
+      <button
+        onClick={onToggle}
+        style={{ ...ctrlBtnStyle, color: ZELDA.parchText }}
+        title="Minimize Spellbook"
+      >
+        ×
+      </button>
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <>
+      {railBtn}
+      {spellbook}
+      {controls}
+    </>
+  );
+}
+
+Object.assign(window, { TerminalButton, nextSize });
