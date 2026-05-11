@@ -8,7 +8,7 @@ function useButtonRailSlot(edge) {
   const [ready, setReady] = React.useState(false);
   React.useEffect(() => {
     if (ctx?.mounted && !ready) setReady(true);
-  }, [ctx?.mounted]);
+  }, [ctx?.mounted, ready]);
   if (!ctx?.mounted) return null;
   const map = { top: ctx.topRef, bottom: ctx.bottomRef, left: ctx.leftRef, right: ctx.rightRef };
   return map[edge]?.current || null;
@@ -22,12 +22,7 @@ function ButtonRail({ children }) {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    // Inject CSS so empty edge slots collapse rather than taking up grid space
-    const style = document.createElement('style');
-    style.textContent = '.rail-edge:empty { display: none !important; }';
-    document.head.appendChild(style);
     setMounted(true);
-    return () => document.head.removeChild(style);
   }, []);
 
   const ctx = { topRef, bottomRef, leftRef, rightRef, mounted };
