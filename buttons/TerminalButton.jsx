@@ -41,6 +41,7 @@ function TerminalButton({ open, size, onToggle, onSize }) {
     <button
       onClick={onToggle}
       style={{
+        order: 3,
         background: open ? ZELDA.tabBgActive : ZELDA.tabBg,
         border: `1px solid ${open ? ZELDA.gold : ZELDA.goldDeep}`,
         color: open ? ZELDA.parchText : ZELDA.parchTextDim,

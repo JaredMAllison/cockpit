@@ -30,7 +30,7 @@ function InboxField() {
   if (!slot) return null;
 
   const content = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, maxWidth: 420 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, maxWidth: 300, order: 1 }}>
       <input
         value={value}
         onChange={e => setValue(e.target.value)}
