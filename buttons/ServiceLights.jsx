@@ -1,22 +1,13 @@
 // buttons/ServiceLights.jsx
 
 const LIGHT = { ok: '#6c9a5a', degraded: '#d4a84a', error: '#c95a52' };
+const fetchHealth = () => fetch('/api/health').then(r => r.json());
 
 function ServiceLights() {
-  const [services, setServices] = React.useState([]);
-  const [lastChecked, setLastChecked]   = React.useState(null);
-  const [tooltip, setTooltip]   = React.useState(null); // name of open tooltip
-
-  React.useEffect(() => {
-    const poll = () =>
-      fetch('/api/health')
-        .then(r => r.json())
-        .then(d => { setServices(d.services || []); setLastChecked(d.checked); })
-        .catch(() => {});
-    poll();
-    const id = setInterval(poll, 30000);
-    return () => clearInterval(id);
-  }, []);
+  const { data } = usePoll(fetchHealth, 30000);
+  const services    = data?.services || [];
+  const lastChecked = data?.checked  || null;
+  const [tooltip, setTooltip] = React.useState(null); // name of open tooltip
 
   // Close tooltip on click outside
   React.useEffect(() => {
