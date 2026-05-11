@@ -4,6 +4,9 @@ import json
 import mimetypes
 import os
 import sys
+import time
+import urllib.request
+import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from datetime import datetime
@@ -15,6 +18,73 @@ STATIC = Path(__file__).resolve().parent
 VAULT = Path(os.environ.get("VAULT_PATH", Path.home() / "Documents/Obsidian/Marlin"))
 
 _VAULT_WARNING = False
+
+# LMF service health targets — override via env var JSON array
+SERVICES = os.environ.get("LMF_SERVICES", json.dumps([
+    {"name": "marlin", "url": "http://marlin:7832"},
+    {"name": "time-factory", "url": "http://timefactory:3000"},
+    {"name": "ollama", "url": "http://ollama:11434"},
+    {"name": "knowledge-loom", "url": "http://knowledge-loom:8888"},
+    {"name": "ollama-orchestrator", "url": "http://ollama-orchestrator:8002"},
+    {"name": "cockpit", "url": "http://localhost:8080"},
+]))
+SERVICES = json.loads(SERVICES) if isinstance(SERVICES, str) else SERVICES
+
+
+def check_service(name, url, timeout=5):
+    """Probe a service health endpoint. Returns (status, latency_ms)."""
+    start = time.time()
+    try:
+        resp = urllib.request.urlopen(url, timeout=timeout)
+        elapsed = int((time.time() - start) * 1000)
+        status = "ok" if 200 <= resp.status < 400 else "degraded"
+        return status, f"{elapsed}ms"
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+        elapsed = int((time.time() - start) * 1000)
+        return "error", f"{elapsed}ms"
+
+
+def vault_context():
+    """Return a snapshot of the vault for AI context."""
+    ctx = {"vault_root": str(VAULT), "notes": [], "tasks": [], "inbox_items": []}
+
+    # Recent inbox items
+    inbox = VAULT / "Inbox.md"
+    if inbox.is_file():
+        lines = inbox.read_text().splitlines()
+        ctx["inbox_items"] = [l.strip() for l in lines if l.strip().startswith("-")][-10:]
+
+    # Active tasks (files with status: queued or active)
+    tasks_dir = VAULT / "Tasks"
+    if tasks_dir.is_dir():
+        for f in sorted(tasks_dir.glob("*.md"))[:15]:
+            try:
+                text = f.read_text()
+                if "status: done" not in text and "status: cancelled" not in text:
+                    ctx["tasks"].append(f.stem)
+            except OSError:
+                pass
+
+    # Note tree (top 2 levels)
+    def scan_dir(path, depth=0):
+        if depth > 2:
+            return []
+        entries = []
+        try:
+            for child in sorted(path.iterdir()):
+                if child.name.startswith(".") or child.name == "_backups":
+                    continue
+                if child.is_dir():
+                    entries.append({"name": child.name + "/", "type": "dir"})
+                    entries.extend(scan_dir(child, depth + 1))
+                elif child.suffix == ".md":
+                    entries.append({"name": child.name, "type": "note"})
+        except OSError:
+            pass
+        return entries
+
+    ctx["vault_tree"] = scan_dir(VAULT)[:40]
+    return ctx
 
 
 def _json(resp, code=200):
@@ -38,6 +108,35 @@ def _check_vault():
 class CockpitHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         rel = self.path.split("?")[0].lstrip("/") or "index.html"
+
+        if rel == "api/health":
+            results = []
+            for svc in SERVICES:
+                status, latency = check_service(svc["name"], svc["url"])
+                results.append({"name": svc["name"], "status": status, "latency": latency})
+            code, ctype, body = _json({"services": results, "checked": datetime.now().isoformat()})
+            self._respond(code, body, ctype)
+            return
+
+        if rel == "api/vault/context":
+            ctx = vault_context()
+            code, ctype, body = _json(ctx)
+            self._respond(code, body, ctype)
+            return
+
+        if rel.startswith("api/vault/read/"):
+            note_path = rel[len("api/vault/read/"):]
+            target = (VAULT / note_path).resolve()
+            if not target.is_relative_to(VAULT):
+                self._respond(403, b"Forbidden")
+                return
+            if target.is_file() and target.suffix == ".md":
+                body = target.read_bytes()
+                self._respond(200, body, "text/markdown")
+            else:
+                self._respond(404, b"Not found")
+            return
+
         file_path = (STATIC / rel).resolve()
         if not file_path.is_relative_to(STATIC):
             self._respond(403, b"Forbidden")

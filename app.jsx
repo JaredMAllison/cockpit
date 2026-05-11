@@ -1,6 +1,6 @@
 // app.jsx — root component: sub-screen state, keyboard nav, editMode, LabelsProvider
 
-const SUBSCREEN_IDS = ['quest', 'map', 'items', 'terminal', 'magic', 'ink'];
+const SUBSCREEN_IDS = ['quest', 'map', 'items', 'terminal', 'magic', 'ink', 'health'];
 
 const QuestStatus = () => (
   <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -56,6 +56,10 @@ const InkScreen = () => (
   <div style={{ width: '100%', height: '100%' }}><InkBlotterPanel /></div>
 );
 
+const HealthScreen = () => (
+  <div style={{ width: '100%', height: '100%' }}><HealthDashboardPanel /></div>
+);
+
 const ItemsScreen = ({ arielFile, setArielFile, setActive }) => (
   <div style={{ display: 'flex', width: '100%', height: '100%' }}>
     <div style={{ flex: '0 0 52%', borderRight: '1px solid #1d1a16' }}>
@@ -105,6 +109,7 @@ function App() {
       else if (e.key === '4') setActive('terminal');
       else if (e.key === '5') setActive('magic');
       else if (e.key === '6') setActive('ink');
+      else if (e.key === '7') setActive('health');
       else if (e.key === 'ArrowRight' || e.key === ']') setActive(SUBSCREEN_IDS[Math.min(idx + 1, SUBSCREEN_IDS.length - 1)]);
       else if (e.key === 'ArrowLeft'  || e.key === '[') setActive(SUBSCREEN_IDS[Math.max(idx - 1, 0)]);
       else if (e.key === 'e') setEditMode(em => !em);
