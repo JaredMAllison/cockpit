@@ -14,6 +14,7 @@ from datetime import datetime
 mimetypes.add_type("text/javascript", ".jsx")
 
 PORT = int(os.environ.get("COCKPIT_PORT", "9100"))
+COCKPIT_ENV = os.environ.get("COCKPIT_ENV", "prod")
 STATIC = Path(__file__).resolve().parent
 VAULT = Path(os.environ.get("VAULT_PATH", Path.home() / "Documents/Obsidian/Marlin"))
 
@@ -146,6 +147,9 @@ class CockpitHandler(BaseHTTPRequestHandler):
             return
         mime = mimetypes.guess_type(str(file_path))[0] or "text/plain"
         body = file_path.read_bytes()
+        if rel == "index.html":
+            inject = f'<script>window.COCKPIT_ENV="{COCKPIT_ENV}";</script>'.encode()
+            body = body.replace(b"</head>", inject + b"</head>", 1)
         self._respond(200, body, mime)
 
     def do_POST(self):

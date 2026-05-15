@@ -10,6 +10,16 @@ const ZELDA = {
   parchText: '#f4e8c8', parchTextDim: '#c8b896',
 };
 
+if (window.COCKPIT_ENV === 'dev') {
+  Object.assign(ZELDA, {
+    feltOuter: '#f5f0ea', feltInner: '#ede8e0',
+    gold: '#e8720c', goldDim: '#b85a0a', goldDeep: '#8a3c08', goldHighlight: '#ff9040',
+    tabBg: '#e4ddd4', tabBgActive: '#d4ccc0',
+    cursor: '#ff6600', cursorGlow: 'rgba(255, 102, 0, 0.4)',
+    parchText: '#1a0f08', parchTextDim: '#4a3020',
+  });
+}
+
 const ZELDA_FONT_DISPLAY = '"Cinzel", "Trajan Pro", "Cormorant Garamond", serif';
 const ZELDA_FONT_PIXEL = '"VT323", "Press Start 2P", "Courier New", monospace';
 
@@ -107,13 +117,26 @@ function ZeldaFrame({ activeSubscreen, onSubscreenChange, mode, children }) {
 
   const modeColor = MODE_COLORS[mode] || ZELDA.gold;
 
+  const isDev = window.COCKPIT_ENV === 'dev';
+
   return (
     <div style={{
       width: '100vw', height: '100vh', position: 'relative',
-      background: `radial-gradient(ellipse at 30% 20%, ${ZELDA.feltOuter} 0%, ${ZELDA.feltInner} 60%, #050d09 100%)`,
+      background: isDev
+        ? `radial-gradient(ellipse at 30% 20%, ${ZELDA.feltOuter} 0%, ${ZELDA.feltInner} 60%, #d8d0c4 100%)`
+        : `radial-gradient(ellipse at 30% 20%, ${ZELDA.feltOuter} 0%, ${ZELDA.feltInner} 60%, #050d09 100%)`,
       fontFamily: ZELDA_FONT_DISPLAY, overflow: 'hidden', boxSizing: 'border-box',
     }}>
-      <div style={{ position: 'absolute', inset: 0, opacity: 0.25, pointerEvents: 'none', backgroundImage: `radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px)`, backgroundSize: '3px 3px' }}/>
+      {isDev && (
+        <div style={{
+          position: 'absolute', top: 8, right: 12, zIndex: 100,
+          background: ZELDA.gold, color: '#fff',
+          fontFamily: ZELDA_FONT_PIXEL, fontSize: 11, fontWeight: 700,
+          padding: '2px 8px', letterSpacing: 2,
+          boxShadow: `0 0 8px ${ZELDA.cursorGlow}`,
+        }}>DEV</div>
+      )}
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none', backgroundImage: `radial-gradient(rgba(${isDev ? '120,80,40' : '255,255,255'},.04) 1px, transparent 1px)`, backgroundSize: '3px 3px' }}/>
       <div style={{ position: 'relative', height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
         <div style={{ color: ZELDA.parchText, fontSize: 22, letterSpacing: 6, textTransform: 'uppercase', fontWeight: 500, textShadow: `0 0 8px rgba(0,0,0,.6), 0 0 1px ${ZELDA.gold}` }}>
           <E path={`subscreen.${cur.id}`} fallback={cur.fallback} style={{}}/>
