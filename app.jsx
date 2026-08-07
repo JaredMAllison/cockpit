@@ -105,6 +105,7 @@ function App() {
               <div key="health"   style={{ position: 'absolute', inset: 0, display: show('health') }}><HealthScreen /></div>
             </div>
           </SubscreenTransition>
+          <ThemeToggleButton />
           <ServiceLights />
           <InboxField />
           <TerminalButton
@@ -120,4 +121,4 @@ function App() {
 }
 
 const mountRoot = ReactDOM.createRoot(document.getElementById('root'));
-mountRoot.render(<App />);
+mountRoot.render(<ThemeProvider><App /></ThemeProvider>);

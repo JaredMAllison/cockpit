@@ -1,6 +1,8 @@
 // buttons/InboxField.jsx
 
 function InboxField() {
+  const { theme } = useTheme();
+  const p = theme.palette;
   const [value, setValue]     = React.useState('');
   const [flash, setFlash]     = React.useState(false);
   const [focused, setFocused] = React.useState(false);
@@ -41,15 +43,15 @@ function InboxField() {
         placeholder="capture..."
         style={{
           flex: 1, background: 'rgba(0,0,0,.4)',
-          border: `1px solid ${focused ? ZELDA.gold : ZELDA.goldDeep}`,
-          color: ZELDA.parchText, fontFamily: ZELDA_FONT_PIXEL, fontSize: 13,
+          border: `1px solid ${focused ? p.gold : p.goldDeep}`,
+          color: p.parchText, fontFamily: theme.fonts.pixel, fontSize: 13,
           padding: '4px 10px', outline: 'none', height: 26,
         }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />
       {flash && (
-        <span style={{ color: '#6c9a5a', fontFamily: ZELDA_FONT_PIXEL, fontSize: 14, lineHeight: 1 }}>
+        <span style={{ color: '#6c9a5a', fontFamily: theme.fonts.pixel, fontSize: 14, lineHeight: 1 }}>
           ✓
         </span>
       )}

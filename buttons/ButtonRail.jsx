@@ -15,6 +15,8 @@ function useButtonRailSlot(edge) {
 }
 
 function ButtonRail({ children }) {
+  const { theme } = useTheme();
+  const p = theme.palette;
   const topRef    = React.useRef(null);
   const bottomRef = React.useRef(null);
   const leftRef   = React.useRef(null);
@@ -33,8 +35,8 @@ function ButtonRail({ children }) {
     style: {
       gridArea: area,
       display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10,
-      background: ZELDA.feltInner,
-      [borderProp]: `1px solid ${ZELDA.goldDeep}`,
+      background: p.feltInner,
+      [borderProp]: `1px solid ${p.goldDeep}`,
       padding: '0 12px', minHeight: 38,
     },
   });
@@ -45,8 +47,8 @@ function ButtonRail({ children }) {
     style: {
       gridArea: area,
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-      background: ZELDA.feltInner,
-      [borderProp]: `1px solid ${ZELDA.goldDeep}`,
+      background: p.feltInner,
+      [borderProp]: `1px solid ${p.goldDeep}`,
       padding: '8px 0', minWidth: 38,
     },
   });

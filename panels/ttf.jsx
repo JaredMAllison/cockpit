@@ -6,6 +6,15 @@
 // glow. The belt is a wooden crate-rail with iron straps. Side previews
 // fade into a deep blue parchment haze (instead of pure black mesh).
 
+// Non-React: read from window.THEME (mirrored by ThemeProvider in cockpit,
+// set by the theme .js wrapper for standalone TTF use).
+const _TTF_p = window.THEME?.palette || {
+  gold: '#d4b76a', goldDim: '#8a7a3e', goldDeep: '#5a4d24',
+  parchText: '#f4e8c8', parchTextDim: '#c8b896',
+};
+const _TTF_f = window.THEME?.fonts || {};
+const _TTF_pixel = _TTF_f.pixel || '"VT323", "Press Start 2P", "Courier New", monospace';
+
 function TtfPanel(props) {
   const tweaks = props.tweaks || {};
   const showGround = tweaks.showGround !== false;
@@ -63,7 +72,7 @@ function TtfPanel(props) {
     <div ref={containerRef} style={{
       width: '100%', height: '100%',
       background: 'radial-gradient(ellipse at 50% -10%, #1a2740 0%, #0a1320 55%, #050810 100%)',
-      color: ZELDA.parchText, fontFamily: ZELDA_FONT_PIXEL,
+      color: _TTF_p.parchText, fontFamily: _TTF_pixel,
       position: 'relative', overflow: 'hidden',
     }}>
       <Ttf2Stage
@@ -76,7 +85,7 @@ function TtfPanel(props) {
       />
       <div style={{
         position: 'absolute', top: 6, left: 6,
-        fontFamily: ZELDA_FONT_PIXEL, fontSize: 9, letterSpacing: 1,
+        fontFamily: _TTF_pixel, fontSize: 9, letterSpacing: 1,
         color: error ? '#c95a52' : '#a08a52',
         background: 'rgba(0,0,0,0.4)', padding: '1px 5px',
         border: `1px solid ${error ? '#5a2020' : '#5a4a28'}`,
@@ -378,27 +387,27 @@ function TtfEventDetail({ event: ev, onClose }) {
         border: `2px solid ${color}`,
         boxShadow: `0 0 24px ${color}44`,
         padding: '20px 28px', minWidth: 260, maxWidth: 380,
-        fontFamily: ZELDA_FONT_PIXEL, cursor: 'default',
+        fontFamily: _TTF_pixel, cursor: 'default',
         position: 'relative',
       }}>
         <button onClick={onClose} style={{
           position: 'absolute', top: 8, right: 10,
-          background: 'none', border: 'none', color: ZELDA.parchTextDim,
+          background: 'none', border: 'none', color: _TTF_p.parchTextDim,
           fontSize: 16, cursor: 'pointer', lineHeight: 1,
         }}>✕</button>
         <div style={{ color, fontSize: 10, letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' }}>
           {ev.category || 'event'}
         </div>
-        <div style={{ color: ZELDA.parchText, fontSize: 15, letterSpacing: 1, marginBottom: 12, lineHeight: 1.4 }}>
+        <div style={{ color: _TTF_p.parchText, fontSize: 15, letterSpacing: 1, marginBottom: 12, lineHeight: 1.4 }}>
           {ev.title}
         </div>
         {(ev.date || ev.start_time) && (
-          <div style={{ color: ZELDA.parchTextDim, fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>
+          <div style={{ color: _TTF_p.parchTextDim, fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>
             {ev.date}{ev.start_time ? ` · ${ev.start_time}` : ''}{ev.end_time ? `–${ev.end_time}` : ''}
           </div>
         )}
         {ev.description && (
-          <div style={{ color: ZELDA.parchTextDim, fontSize: 11, letterSpacing: 0.5, lineHeight: 1.5, marginTop: 8, borderTop: `1px solid ${ZELDA.goldDeep}`, paddingTop: 8 }}>
+          <div style={{ color: _TTF_p.parchTextDim, fontSize: 11, letterSpacing: 0.5, lineHeight: 1.5, marginTop: 8, borderTop: `1px solid ${_TTF_p.goldDeep}`, paddingTop: 8 }}>
             {ev.description}
           </div>
         )}

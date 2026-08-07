@@ -14,12 +14,12 @@ function nextSize(s) {
 const FRAME = { top: 120, right: 50, bottom: 74, left: 50 };
 const RAIL_H = 38; // bottom rail height — Spellbook quarter/half sit above it
 
-function spellbookStyle(size) {
+function spellbookStyle(size, p) {
   const base = {
     position: 'fixed', zIndex: 1000,
-    background: ZELDA.feltOuter,
-    border: `2px solid ${ZELDA.goldDeep}`,
-    boxShadow: `0 0 0 1px ${ZELDA.gold}, 0 8px 32px rgba(0,0,0,.7)`,
+    background: p.feltOuter,
+    border: `2px solid ${p.goldDeep}`,
+    boxShadow: `0 0 0 1px ${p.gold}, 0 8px 32px rgba(0,0,0,.7)`,
     overflow: 'hidden',
   };
   if (size === 'quarter') return { ...base, right: FRAME.right + 4, bottom: FRAME.bottom + RAIL_H + 4, width: '40vw', height: '28vh' };
@@ -29,6 +29,8 @@ function spellbookStyle(size) {
 }
 
 function TerminalButton({ open, size, onToggle, onSize }) {
+  const { theme } = useTheme();
+  const p = theme.palette;
   const initialized = React.useRef(false);
 
   // Lazy-initialize iframe on first open
@@ -42,12 +44,12 @@ function TerminalButton({ open, size, onToggle, onSize }) {
       onClick={onToggle}
       style={{
         order: 3,
-        background: open ? ZELDA.tabBgActive : ZELDA.tabBg,
-        border: `1px solid ${open ? ZELDA.gold : ZELDA.goldDeep}`,
-        color: open ? ZELDA.parchText : ZELDA.parchTextDim,
-        fontFamily: ZELDA_FONT_PIXEL, fontSize: 13, letterSpacing: 1,
+        background: open ? p.tabBgActive : p.tabBg,
+        border: `1px solid ${open ? p.gold : p.goldDeep}`,
+        color: open ? p.parchText : p.parchTextDim,
+        fontFamily: theme.fonts.pixel, fontSize: 13, letterSpacing: 1,
         padding: '3px 12px', cursor: 'pointer', height: 26,
-        boxShadow: open ? `0 0 8px ${ZELDA.cursorGlow}` : 'none',
+        boxShadow: open ? `0 0 8px ${p.cursorGlow}` : 'none',
         transition: 'all 0.12s',
       }}
     >
@@ -58,7 +60,7 @@ function TerminalButton({ open, size, onToggle, onSize }) {
 
   // Spellbook iframe — always in DOM after first open, hidden when minimized
   const spellbook = initialized.current ? ReactDOM.createPortal(
-    <div style={{ ...spellbookStyle(size), display: open ? 'block' : 'none' }}>
+    <div style={{ ...spellbookStyle(size, p), display: open ? 'block' : 'none' }}>
       <iframe
         src="http://localhost:7682"
         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
@@ -70,8 +72,8 @@ function TerminalButton({ open, size, onToggle, onSize }) {
 
   // Size controls — visible whenever open (not minimized)
   const ctrlBtnStyle = {
-    background: ZELDA.tabBg, border: `1px solid ${ZELDA.goldDeep}`,
-    color: ZELDA.parchTextDim, fontFamily: ZELDA_FONT_PIXEL, fontSize: 11,
+    background: p.tabBg, border: `1px solid ${p.goldDeep}`,
+    color: p.parchTextDim, fontFamily: theme.fonts.pixel, fontSize: 11,
     padding: '2px 8px', cursor: 'pointer',
     transition: 'all 0.1s',
   };
@@ -83,8 +85,8 @@ function TerminalButton({ open, size, onToggle, onSize }) {
       position: 'fixed', zIndex: 1002,
       right: FRAME.right + 8, bottom: FRAME.bottom + 8,
       display: 'flex', gap: 4, alignItems: 'center',
-      background: ZELDA.feltOuter,
-      border: `1px solid ${ZELDA.goldDeep}`,
+      background: p.feltOuter,
+      border: `1px solid ${p.goldDeep}`,
       padding: '3px 6px',
       boxShadow: '0 2px 8px rgba(0,0,0,.5)',
     }}>
@@ -97,7 +99,7 @@ function TerminalButton({ open, size, onToggle, onSize }) {
       </button>
       <button
         onClick={onToggle}
-        style={{ ...ctrlBtnStyle, color: ZELDA.parchText }}
+        style={{ ...ctrlBtnStyle, color: p.parchText }}
         title="Minimize Spellbook"
       >
         ×
