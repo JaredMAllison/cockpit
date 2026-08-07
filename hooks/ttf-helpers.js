@@ -93,7 +93,7 @@ function TTF_eventColor(ev) {
     const mode = TTF_TAG_TO_MODE[cat];
     if (mode) return TTF_MODE_COLORS[mode];
   }
-  return ZELDA.gold;
+  return window.THEME?.palette?.gold || '#d4b76a';
 }
 
 // Expand a recurring event's rrule into concrete dates within [from, to].

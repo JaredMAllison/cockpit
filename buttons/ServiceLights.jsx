@@ -12,6 +12,8 @@ function svcAbbrev(name) {
 }
 
 function ServiceLights() {
+  const { theme } = useTheme();
+  const p = theme.palette;
   const { data } = usePoll(fetchHealth, 30000);
   const services    = data?.services || [];
   const lastChecked = data?.checked  || null;
@@ -32,7 +34,7 @@ function ServiceLights() {
   const content = (
     <div style={{ order: 2, flex: 1, display: 'flex', gap: 20, alignItems: 'center', justifyContent: 'center' }}>
       {services.map(svc => {
-        const color = LIGHT[svc.status] || ZELDA.goldDim;
+        const color = LIGHT[svc.status] || p.goldDim;
         const open  = tooltip === svc.name;
         return (
           <div
@@ -52,21 +54,21 @@ function ServiceLights() {
               border: '1px solid rgba(0,0,0,.3)',
             }} />
             <span style={{
-              fontFamily: ZELDA_FONT_PIXEL, fontSize: 12,
+              fontFamily: theme.fonts.pixel, fontSize: 12,
               color, letterSpacing: 0.5, lineHeight: 1, opacity: 0.8,
             }}>{svcAbbrev(svc.name)}</span>
             {open && (
               <div style={{
                 position: 'absolute', bottom: 46, left: '50%', transform: 'translateX(-50%)',
-                background: '#060d08', border: `1px solid ${ZELDA.gold}`,
-                color: ZELDA.parchText, fontFamily: ZELDA_FONT_PIXEL, fontSize: 12,
+                background: '#060d08', border: `1px solid ${p.gold}`,
+                color: p.parchText, fontFamily: theme.fonts.pixel, fontSize: 12,
                 padding: '8px 12px', whiteSpace: 'nowrap', zIndex: 200,
-                boxShadow: `0 6px 20px rgba(0,0,0,.9), 0 0 0 1px ${ZELDA.goldDeep}`,
+                boxShadow: `0 6px 20px rgba(0,0,0,.9), 0 0 0 1px ${p.goldDeep}`,
                 lineHeight: 1.8,
               }}>
-                <div style={{ color: ZELDA.gold, marginBottom: 2 }}>{svc.name}</div>
+                <div style={{ color: p.gold, marginBottom: 2 }}>{svc.name}</div>
                 <div style={{ color }}>{svc.status} · {svc.latency}</div>
-                <div style={{ color: ZELDA.parchTextDim, fontSize: 10, marginTop: 2 }}>
+                <div style={{ color: p.parchTextDim, fontSize: 10, marginTop: 2 }}>
                   {lastChecked ? new Date(lastChecked).toLocaleTimeString() : '—'}
                 </div>
               </div>
