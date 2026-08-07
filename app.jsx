@@ -49,8 +49,19 @@ function App() {
   const [optimisticMode, setOptimisticMode] = React.useState(null);
   const [terminalOpen, setTerminalOpen] = React.useState(false);
   const [terminalSize, setTerminalSize] = React.useState('quarter');
+  const [operator, setOperator]     = React.useState(null);
+  // null = operator not yet resolved. Never default to a port: a wrong guess
+  // opens another operator's shell. Terminal stays shut until /api/operator answers.
+  const [ttydPort, setTtydPort]     = React.useState(null);
   const { data: rootState } = usePoll(fetchState, 30000);
   const mode = optimisticMode || rootState?.mode || 'available';
+
+  React.useEffect(() => {
+    fetch('/api/operator').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.operator) setOperator(d.operator.toUpperCase());
+      if (d?.ttyd_port) setTtydPort(d.ttyd_port);
+    }).catch(() => {});
+  }, []);
 
   React.useEffect(() => { setOptimisticMode(null); }, [rootState]);
 
@@ -95,6 +106,11 @@ function App() {
   return (
     <LabelsProvider editing={editMode}>
       <ZeldaFrame activeSubscreen={active} onSubscreenChange={setActive} mode={mode}>
+        {operator && (
+          <div style={{ position: 'absolute', top: 6, right: 10, zIndex: 10, fontSize: 11, fontFamily: 'var(--font-pixel, monospace)', color: '#888', letterSpacing: 1, pointerEvents: 'none' }}>
+            {operator}
+          </div>
+        )}
         <ButtonRail>
           <SubscreenTransition active={active}>
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -113,6 +129,7 @@ function App() {
             size={terminalSize}
             onToggle={() => setTerminalOpen(prev => !prev)}
             onSize={setTerminalSize}
+            ttydPort={ttydPort}
           />
         </ButtonRail>
       </ZeldaFrame>

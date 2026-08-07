@@ -3,6 +3,7 @@
 import json
 import mimetypes
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -30,6 +31,24 @@ SERVICES = os.environ.get("LMF_SERVICES", json.dumps([
     {"name": "cockpit", "url": "http://localhost:8080"},
 ]))
 SERVICES = json.loads(SERVICES) if isinstance(SERVICES, str) else SERVICES
+
+# --- Operator context (T001) ---
+OPERATOR_NAME = os.environ.get("MARLIN_OPERATOR", "jared")
+if not re.fullmatch(r"[a-z0-9_-]+", OPERATOR_NAME):
+    print(f"[cockpit] FATAL: OPERATOR name invalid (must be [a-z0-9_-]+): {OPERATOR_NAME!r}", file=sys.stderr)
+    sys.exit(1)
+_operator_agent_path = (VAULT / "System" / "Users" / OPERATOR_NAME / "AGENT.md").resolve()
+if not _operator_agent_path.is_relative_to(VAULT / "System" / "Users"):
+    print(f"[cockpit] FATAL: OPERATOR path escapes System/Users/: {_operator_agent_path}", file=sys.stderr)
+    sys.exit(1)
+OPERATOR_AGENT = _operator_agent_path.read_text(encoding="utf-8") if _operator_agent_path.is_file() else None
+
+TTYD_PORTS = {"jared": 7682, "tori": 7683}
+# No fallback: an unmapped operator gets None, and the client keeps the terminal
+# shut. Defaulting here would hand a new operator someone else's shell.
+TTYD_PORT = TTYD_PORTS.get(OPERATOR_NAME)
+if TTYD_PORT is None:
+    print(f"[cockpit] WARN: no ttyd port mapped for operator {OPERATOR_NAME!r}; terminal disabled", file=sys.stderr)
 
 
 def check_service(name, url, timeout=5):
@@ -115,7 +134,12 @@ class CockpitHandler(BaseHTTPRequestHandler):
             for svc in SERVICES:
                 status, latency = check_service(svc["name"], svc["url"])
                 results.append({"name": svc["name"], "status": status, "latency": latency})
-            code, ctype, body = _json({"services": results, "checked": datetime.now().isoformat()})
+            code, ctype, body = _json({"services": results, "operator": OPERATOR_NAME, "checked": datetime.now().isoformat()})
+            self._respond(code, body, ctype)
+            return
+
+        if rel == "api/operator":
+            code, ctype, body = _json({"operator": OPERATOR_NAME, "agent_content": OPERATOR_AGENT, "ttyd_port": TTYD_PORT})
             self._respond(code, body, ctype)
             return
 
@@ -207,7 +231,7 @@ class CockpitHandler(BaseHTTPRequestHandler):
 def main():
     _check_vault()
     server = HTTPServer(("0.0.0.0", PORT), CockpitHandler)
-    print(f"Cockpit on http://0.0.0.0:{PORT}")
+    print(f"Cockpit on http://0.0.0.0:{PORT}  operator={OPERATOR_NAME}")
     print(f"Vault: {VAULT}")
     server.serve_forever()
 
