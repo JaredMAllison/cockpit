@@ -117,6 +117,25 @@ def _text(body, code=200):
     return code, "text/plain", body
 
 
+def _ends_with_newline(path):
+    """True if the file is newline-terminated, or does not need one.
+
+    Reads only the final byte -- Inbox.md grows without bound and is appended
+    to on every capture, so slurping it to inspect one character would make
+    each append proportional to the file's whole history.
+
+    Missing or empty files return True: there is nothing to separate from, so
+    the caller must not emit a leading newline.
+    """
+    try:
+        with path.open("rb") as f:
+            f.seek(-1, os.SEEK_END)
+            return f.read(1) == b"\n"
+    except (OSError, ValueError):
+        # ValueError: seek before start of an empty file. OSError: missing file.
+        return True
+
+
 def _check_vault():
     """Warn once if the vault path is not writable, then rely on OS-level errors."""
     global _VAULT_WARNING
@@ -206,8 +225,19 @@ class CockpitHandler(BaseHTTPRequestHandler):
             text = data.get("text", "")
             inbox = VAULT / "Inbox.md"
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-            entry = f"\n- [{timestamp}] {text}"
+            # Newline contract: an entry OWNS its trailing newline, and adds a
+            # leading one only when the file is not already newline-terminated.
+            #
+            # The previous form -- f"\n- [...] {text}" with no trailing newline
+            # -- had this backwards and broke in both directions:
+            #   * file already ended in \n -> a blank line was inserted
+            #   * file left unterminated   -> the NEXT writer concatenated onto
+            #                                 this entry's line
+            # Both were observed in Inbox.md on 2026-08-07.
+            entry = f"- [{timestamp}] {text}\n"
             with inbox.open("a", encoding="utf-8") as f:
+                if not _ends_with_newline(inbox):
+                    f.write("\n")
                 f.write(entry)
             print(f"[cockpit] Appended to Inbox.md: {text[:60]}...")
             code, ctype, body = _json({"appended": True, "inbox_entry": entry.strip()})
