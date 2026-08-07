@@ -28,13 +28,14 @@ function spellbookStyle(size, p) {
   return { ...base, top: FRAME.top, left: FRAME.left, right: FRAME.right, bottom: FRAME.bottom };
 }
 
-function TerminalButton({ open, size, onToggle, onSize }) {
+function TerminalButton({ open, size, onToggle, onSize, ttydPort }) {
   const { theme } = useTheme();
   const p = theme.palette;
   const initialized = React.useRef(false);
 
-  // Lazy-initialize iframe on first open
-  if (open && !initialized.current) initialized.current = true;
+  // Lazy-initialize iframe on first open — but only once the operator's port is
+  // known, so the session can never be opened against a guessed port.
+  if (open && ttydPort && !initialized.current) initialized.current = true;
 
   const slot = useButtonRailSlot('bottom');
 
@@ -42,13 +43,16 @@ function TerminalButton({ open, size, onToggle, onSize }) {
   const railBtn = slot ? ReactDOM.createPortal(
     <button
       onClick={onToggle}
+      disabled={!ttydPort}
+      title={ttydPort ? 'Spellbook' : 'Resolving operator…'}
       style={{
         order: 3,
         background: open ? p.tabBgActive : p.tabBg,
         border: `1px solid ${open ? p.gold : p.goldDeep}`,
         color: open ? p.parchText : p.parchTextDim,
         fontFamily: theme.fonts.pixel, fontSize: 13, letterSpacing: 1,
-        padding: '3px 12px', cursor: 'pointer', height: 26,
+        padding: '3px 12px', cursor: ttydPort ? 'pointer' : 'wait', height: 26,
+        opacity: ttydPort ? 1 : 0.5,
         boxShadow: open ? `0 0 8px ${p.cursorGlow}` : 'none',
         transition: 'all 0.12s',
       }}
@@ -59,10 +63,10 @@ function TerminalButton({ open, size, onToggle, onSize }) {
   ) : null;
 
   // Spellbook iframe — always in DOM after first open, hidden when minimized
-  const spellbook = initialized.current ? ReactDOM.createPortal(
+  const spellbook = initialized.current && ttydPort ? ReactDOM.createPortal(
     <div style={{ ...spellbookStyle(size, p), display: open ? 'block' : 'none' }}>
       <iframe
-        src="http://localhost:7682"
+        src={`http://localhost:${ttydPort}`}
         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
         title="Spellbook"
       />
