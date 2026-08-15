@@ -8,37 +8,47 @@ function TaskIndexPanel({ onFocusDate }) {
   const { data: taskData, error: taskErr } = usePoll(fetchAllTasks, 30000);
   const { data: stateData }               = usePoll(fetchState, 30000);
 
-  const today = new Date().toISOString().slice(0, 10);
   const ttfFetch = React.useRef(() => fetchTtfEvents('2026-01-01', '2027-12-31'));
   const { data: ttfData, error: ttfErr } = usePoll(() => ttfFetch.current(), 60000);
 
-  // Join on external_id — a vault path, not a uuid. Survives ttf_id loss and
-  // needs no lookup table. TTF being down degrades binding to "unknown"
-  // rather than failing the whole panel.
-  const bound = React.useMemo(() => {
-    const set = new Set((ttfData || []).map(e => e.external_id).filter(Boolean));
-    return set;
+  // Two-way join: tasks carry ttf_id (-> event.id) and TTF events carry
+  // external_id (-> a vault path). Neither direction alone is trustworthy —
+  // most live TTF events have no external_id tag at all, so a path-only miss
+  // does not mean the link is broken, only that one side lost its reference.
+  // TTF being down degrades binding to "unknown" rather than failing the panel.
+  const { ids: eventIds, paths: eventPaths } = React.useMemo(() => {
+    const ids = new Set(), paths = new Set();
+    for (const e of (ttfData || [])) {
+      if (e.id) ids.add(e.id);
+      if (e.external_id) paths.add(e.external_id);
+    }
+    return { ids, paths };
   }, [ttfData]);
 
   const rows = React.useMemo(() => {
     const sort = (window.TASK_SORTS.find(s => s.id === sortId) || window.TASK_SORTS[0]);
     return (taskData?.tasks || [])
-      .map(t => ({
-        ...t,
-        _binding: ttfErr ? 'unknown'
-                : bound.has(t.external_id) ? 'bound'
-                : t.ttf_id ? 'orphaned' : 'unbound',
-      }))
+      .map(t => {
+        const byId   = Boolean(t.ttf_id) && eventIds.has(t.ttf_id);
+        const byPath = eventPaths.has(t.external_id);
+        const _binding =
+            ttfErr            ? 'unknown'   // TTF unreachable — say so, do not guess
+          : (byId && byPath)  ? 'bound'     // both directions agree: firm contract
+          : (byId || byPath)  ? 'partial'   // half-formed: one side lost its reference
+          : t.ttf_id          ? 'orphaned'  // claims a link no event answers to
+                              : 'unbound';  // never pushed
+        return { ...t, _binding };
+      })
       .sort(sort.sort);
-  }, [taskData, bound, sortId, ttfErr]);
+  }, [taskData, eventIds, eventPaths, sortId, ttfErr]);
 
   function pick(t) {
     setSelected(t.slug);
     if (t.goal_date && onFocusDate) onFocusDate(t.goal_date);
   }
 
-  const BIND_MARK = { bound: '⛓', orphaned: '✕', unbound: '○', unknown: '·' };
-  const BIND_COLOR = { bound: '#6c9a5a', orphaned: '#c95a52', unbound: '#5a5249', unknown: '#5a5249' };
+  const BIND_MARK = { bound: '⛓', partial: '◐', orphaned: '✕', unbound: '○', unknown: '·' };
+  const BIND_COLOR = { bound: '#6c9a5a', partial: '#d4a84a', orphaned: '#c95a52', unbound: '#5a5249', unknown: '#5a5249' };
 
   return (
     <div style={{ background: '#0e0c0a', color: '#e8e3d8', fontFamily: '"Berkeley Mono","JetBrains Mono",ui-monospace,monospace', fontSize: 11, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
