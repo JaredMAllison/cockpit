@@ -56,6 +56,16 @@ function TtfPanel(props) {
   const zoneW = size.w / 3;
   const ctrl = useTtfBeltController({ zoneWidth: zoneW });
 
+  // Drive the belt from outside. warpTo has existed since the belt controller
+  // was written and had no caller until now.
+  React.useEffect(() => {
+    if (!props.focusDate) return;
+    const target = H.parseDate(props.focusDate);
+    const base   = H.parseDate(today);
+    const offset = Math.round((target - base) / 86400000);
+    ctrl.warpTo(offset);
+  }, [props.focusDate]);
+
   // RAF render loop — drives belt animation, sway, bob.
   const [, force] = React.useReducer(x => x + 1, 0);
   React.useEffect(() => {
