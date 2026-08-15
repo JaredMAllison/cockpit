@@ -48,13 +48,6 @@ function postTtfEvent(event) {
     body: JSON.stringify(event),
   });
 }
-function patchTtfEvent(id, changes) {
-  return fetch(`${HOSTS.ttf}/api/events/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(changes),
-  });
-}
 function deleteTtfEvent(id) {
   return fetch(`${HOSTS.ttf}/api/events/${id}`, { method: 'DELETE' });
 }
@@ -72,6 +65,7 @@ function fetchMarlinSnooze(task, minutes) {
   return fetch(`${HOSTS.marlin}/snooze?task=${encodeURIComponent(task)}&minutes=${minutes}`, { redirect: 'manual' });
 }
 function fetchMarlinTodayTasks() { return _fetch(`${HOSTS.marlin}/tasks/today`); }
+function fetchAllTasks() { return _fetch(`${HOSTS.marlin}/api/tasks`); }
 function markAdlDone(title) {
   return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(title)}`, { redirect: 'manual' }).catch(() => {});
 }
