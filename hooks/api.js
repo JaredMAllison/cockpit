@@ -4,7 +4,10 @@
 const HOSTS = {
   marlin:   'http://localhost:7832',
   projects: 'http://localhost:7833',
-  ttf:      'http://localhost:8000',
+  // :3000 is the canonical TTF — _ttf.md declares it and /ttf-push writes
+  // there, so every ttf_id in the vault refers to this instance's ids.
+  // :8000 and :8501 are separate, divergent databases (witnessed 2026-08-15).
+  ttf:      'http://localhost:3000',
   ariel:    'http://localhost:8002',
 };
 
