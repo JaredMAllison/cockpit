@@ -25,6 +25,15 @@ function TaskIndexPanel({ onFocusDate }) {
     return { ids, paths };
   }, [ttfData]);
 
+  // Only classify once TTF has actually answered. usePoll starts at
+  // {data: null, error: null}, so for the whole first round-trip ttfData is
+  // null and every id set is empty — which would read as "no event answers to
+  // this ttf_id" and paint each bound task red `orphaned`. That is the most
+  // alarming state in the vocabulary, shown by default, for a claim we have no
+  // evidence for yet. An empty ARRAY is a real answer and does mean orphaned;
+  // null means we have not heard back. The distinction is the whole fix.
+  const ttfReady = !ttfErr && ttfData != null;
+
   const rows = React.useMemo(() => {
     const sort = (window.TASK_SORTS.find(s => s.id === sortId) || window.TASK_SORTS[0]);
     return (taskData?.tasks || [])
@@ -32,7 +41,7 @@ function TaskIndexPanel({ onFocusDate }) {
         const byId   = Boolean(t.ttf_id) && eventIds.has(t.ttf_id);
         const byPath = eventPaths.has(t.external_id);
         const _binding =
-            ttfErr            ? 'unknown'   // TTF unreachable — say so, do not guess
+            !ttfReady         ? 'unknown'   // unreachable or not yet answered — do not guess
           : (byId && byPath)  ? 'bound'     // both directions agree: firm contract
           : (byId || byPath)  ? 'partial'   // half-formed: one side lost its reference
           : t.ttf_id          ? 'orphaned'  // claims a link no event answers to
@@ -40,7 +49,7 @@ function TaskIndexPanel({ onFocusDate }) {
         return { ...t, _binding };
       })
       .sort(sort.sort);
-  }, [taskData, eventIds, eventPaths, sortId, ttfErr]);
+  }, [taskData, eventIds, eventPaths, sortId, ttfReady]);
 
   function pick(t) {
     setSelected(t.slug);
