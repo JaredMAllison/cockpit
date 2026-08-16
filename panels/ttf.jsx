@@ -58,13 +58,18 @@ function TtfPanel(props) {
 
   // Drive the belt from outside. warpTo has existed since the belt controller
   // was written and had no caller until now.
+  // Keyed on focusSeq, not focusDate: re-clicking the same already-focused
+  // task must re-warp even though the date string is unchanged (e.g. after
+  // the operator pages the belt away by hand with ctrl.advance). focusSeq is
+  // a monotonic counter bumped once per click in app.jsx, so it changes
+  // exactly once per selection and never spuriously on unrelated re-renders.
   React.useEffect(() => {
     if (!props.focusDate) return;
     const target = H.parseDate(props.focusDate);
     const base   = H.parseDate(today);
     const offset = Math.round((target - base) / 86400000);
     ctrl.warpTo(offset);
-  }, [props.focusDate]);
+  }, [props.focusSeq]);
 
   // RAF render loop — drives belt animation, sway, bob.
   const [, force] = React.useReducer(x => x + 1, 0);
