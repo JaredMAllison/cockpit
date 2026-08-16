@@ -15,6 +15,21 @@ const _TTF_p = window.THEME?.palette || {
 const _TTF_f = window.THEME?.fonts || {};
 const _TTF_pixel = _TTF_f.pixel || '"VT323", "Press Start 2P", "Courier New", monospace';
 
+// Fetch window geometry. The window follows the belt, not the calendar.
+//
+// TTF_WINDOW_BAND      days fetched either side of the anchor day
+// TTF_REANCHOR_DRIFT   how far the belt may drift from the anchor before the
+//                      window is re-anchored (and refetched)
+//
+// The stage draws five zones — centerOffset-2 .. centerOffset+2 — so the hard
+// minimum coverage is ±2 days from wherever the belt is. Allowing the belt to
+// drift DRIFT days from the anchor means the band must be at least DRIFT+2.
+// 21 vs 14 leaves a week of slack past the worst case: a fortnight of arrow
+// paging in either direction is free, and any jump beyond that costs exactly
+// one refetch because re-anchoring re-centres the window on the new day.
+const TTF_WINDOW_BAND    = 21;
+const TTF_REANCHOR_DRIFT = 14;
+
 function TtfPanel(props) {
   const tweaks = props.tweaks || {};
   const showGround = tweaks.showGround !== false;
@@ -23,7 +38,10 @@ function TtfPanel(props) {
 
   const H = window.TTF_helpers;
 
-  // Date range — computed early so fetchRef can capture current values
+  // Day offsets are always relative to TODAY. That keeps every date label and
+  // every warp target on one origin no matter where the fetch window sits —
+  // only the window moves. dayOffsetToDateStr is also handed to Ttf2Stage,
+  // which maps centerOffset-2..+2 through it, so its origin must not drift.
   const today = H.todayStr();
   function dayOffsetToDateStr(off) {
     const d = H.parseDate(today);
@@ -31,13 +49,6 @@ function TtfPanel(props) {
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   }
-  const fromStr = dayOffsetToDateStr(-3);
-  const toStr   = dayOffsetToDateStr(10);
-  const ttfFetchRef = React.useRef(() => fetchTtfEvents(fromStr, toStr));
-  ttfFetchRef.current = () => fetchTtfEvents(fromStr, toStr);
-
-  const { data, error } = usePoll(() => ttfFetchRef.current(), 30000);
-  const events = data || [];
 
   const containerRef = React.useRef(null);
   const [size, setSize] = React.useState({ w: 900, h: 650 });
@@ -55,6 +66,32 @@ function TtfPanel(props) {
 
   const zoneW = size.w / 3;
   const ctrl = useTtfBeltController({ zoneWidth: zoneW });
+
+  // The window the CURRENT data was fetched for. Hysteresis lives here: the
+  // belt is free to move within ±TTF_REANCHOR_DRIFT of the anchor without
+  // costing a request, and only a move past that re-anchors and refetches.
+  // Anchoring on the live centerOffset instead would refetch on every arrow
+  // press; anchoring on today (the old behaviour) drew empty days for any
+  // task outside the initial fortnight.
+  const [anchorOffset, setAnchorOffset] = React.useState(0);
+  React.useEffect(() => {
+    if (Math.abs(ctrl.centerOffset - anchorOffset) > TTF_REANCHOR_DRIFT) {
+      setAnchorOffset(ctrl.centerOffset);
+    }
+  }, [ctrl.centerOffset, anchorOffset]);
+
+  const fromStr = dayOffsetToDateStr(anchorOffset - TTF_WINDOW_BAND);
+  const toStr   = dayOffsetToDateStr(anchorOffset + TTF_WINDOW_BAND);
+
+  const ttfFetchRef = React.useRef(null);
+  ttfFetchRef.current = () => fetchTtfEvents(fromStr, toStr);
+
+  // anchorOffset is passed as an extra dep so a re-anchor refetches NOW.
+  // Reassigning ttfFetchRef.current alone would not — usePoll deliberately
+  // ignores fetchFn identity, so the new window would not land until the
+  // next 30s tick and the belt would show an empty day until then.
+  const { data, error } = usePoll(() => ttfFetchRef.current(), 30000, [anchorOffset]);
+  const events = data || [];
 
   // Drive the belt from outside. warpTo has existed since the belt controller
   // was written and had no caller until now.
@@ -81,6 +118,9 @@ function TtfPanel(props) {
   }, []);
   const { shift: beltShift, sway } = ctrl.get();
 
+  // Same window as the fetch, always. groupByDay is what expands recurrences
+  // into concrete days, so a wider grouping window than the fetch invents
+  // nothing and a narrower one silently drops days the belt can reach.
   const byDay = H.groupByDay(events, fromStr, toStr);
 
   return (
