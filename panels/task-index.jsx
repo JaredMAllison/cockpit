@@ -56,8 +56,16 @@ function TaskIndexPanel({ onFocusDate }) {
     if (t.goal_date && onFocusDate) onFocusDate(t.goal_date);
   }
 
-  const BIND_MARK = { bound: '⛓', partial: '◐', orphaned: '✕', unbound: '○', unknown: '·' };
-  const BIND_COLOR = { bound: '#6c9a5a', partial: '#d4a84a', orphaned: '#c95a52', unbound: '#5a5249', unknown: '#5a5249' };
+  // `unknown` and `unbound` mean opposite things and must not look alike.
+  // unbound = "this task never entered TTF", a settled fact about 149 of 181
+  // rows and not a defect. unknown = "we could not find out", which is a
+  // statement about the OBSERVER, not the data. They previously shared
+  // #5a5249 and differed only as `·` against `○`, which at 11px monospace is
+  // no difference at all — so a dead TTF rendered as a vault full of tasks
+  // that had simply never been pushed. The failure was invisible in exactly
+  // the way the panel exists to prevent.
+  const BIND_MARK = { bound: '⛓', partial: '◐', orphaned: '✕', unbound: '○', unknown: '?' };
+  const BIND_COLOR = { bound: '#6c9a5a', partial: '#d4a84a', orphaned: '#c95a52', unbound: '#5a5249', unknown: '#5a7a94' };
 
   return (
     <div style={{ background: '#0e0c0a', color: '#e8e3d8', fontFamily: '"Berkeley Mono","JetBrains Mono",ui-monospace,monospace', fontSize: 11, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -66,8 +74,22 @@ function TaskIndexPanel({ onFocusDate }) {
         <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           <E path="panel.taskIndex" fallback="Task Index"/>
         </span>
-        <span style={{ fontSize: 10, color: '#5a5249' }}>
-          {rows.length}{taskErr ? ' ⚠' : ''}
+        {/* Degraded sources are named, not merged into one anonymous ⚠. The two
+            feeds fail differently: marlin down empties the list, TTF down
+            leaves the list intact and silently voids every binding verdict.
+            A single warning glyph could not tell those apart. */}
+        <span style={{ fontSize: 10, color: '#5a5249', display: 'flex', gap: 6, alignItems: 'baseline' }}>
+          {taskErr && (
+            <span style={{ color: '#c95a52' }} title="vault task list unavailable">vault ⚠</span>
+          )}
+          {!ttfReady && (
+            <span style={{ color: '#5a7a94' }}
+                  title={ttfErr ? 'TTF unreachable — every binding is unknown'
+                                : 'waiting for TTF — bindings not yet resolved'}>
+              ttf {ttfErr ? '⚠' : '…'}
+            </span>
+          )}
+          <span>{rows.length}</span>
         </span>
       </div>
 
