@@ -13,6 +13,19 @@ function _byDue(a, b) {
 
 const DURATION_RANK = { short: 0, medium: 1, long: 2, '': 3 };
 
+// Severity, worst first. This view exists to surface rot, so alphabetical
+// ordering was actively wrong — it opened on `bound` and buried `orphaned`
+// in the middle of the list.
+//
+//   orphaned  claims a link nothing answers to. Actively false data.
+//   partial   half-formed; one side lost its reference.
+//   unknown   TTF could not be reached, so the row is unresolved, not sound.
+//             Above `bound` because an unverified claim is not a verified one.
+//   bound     healthy and participating.
+//   unbound   never entered TTF. The silent majority (149 of 181), and not a
+//             defect — last, so it cannot bury anything that is.
+const BINDING_RANK = { orphaned: 0, partial: 1, unknown: 2, bound: 3, unbound: 4 };
+
 window.TASK_SORTS = [
   {
     id: 'due', label: 'Due',
@@ -38,6 +51,7 @@ window.TASK_SORTS = [
   {
     id: 'binding', label: 'Binding',
     group: t => t._binding,           // set by the panel's join, see Task 8
-    sort: (a, b) => _byString('_binding')(a, b) || _byDue(a, b),
+    sort: (a, b) => (BINDING_RANK[a._binding] ?? 5) - (BINDING_RANK[b._binding] ?? 5)
+                    || _byDue(a, b),
   },
 ];
