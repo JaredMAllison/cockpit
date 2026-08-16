@@ -9,16 +9,17 @@ const QuestStatus = () => (
   </div>
 );
 
-const MapScreen = () => (
+const MapScreen = ({ focusTtfDate, focusTtfSeq, setFocusTtfDate, bumpFocusTtfSeq, setActive }) => (
   <div style={{ display: 'flex', width: '100%', height: '100%' }}>
     <div style={{ flex: 1, borderRight: '1px solid #1d1a16', overflow: 'hidden' }}>
-      <iframe
-        src="http://localhost:8000"
-        style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-        title="The Time Factory"
-      />
+      <TtfPanel focusDate={focusTtfDate} focusSeq={focusTtfSeq} />
     </div>
-    <div style={{ width: 260, flexShrink: 0 }}><QuickhacksPanel /></div>
+    <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid #1d1a16' }}>
+      <TaskIndexPanel onFocusDate={(d) => { setFocusTtfDate(d); bumpFocusTtfSeq(); setActive('map'); }} />
+    </div>
+    <div style={{ width: 260, flexShrink: 0 }}>
+      <QuickhacksPanel />
+    </div>
   </div>
 );
 
@@ -46,6 +47,12 @@ function App() {
   const [active, setActive]         = React.useState('quest');
   const [editMode, setEditMode]     = React.useState(false);
   const [arielFile, setArielFile]   = React.useState(null);
+  const [focusTtfDate, setFocusTtfDate] = React.useState(null);
+  // Bumped on every task-index click, including re-clicks of an already-
+  // focused date. focusTtfDate alone can't signal a repeat selection --
+  // Object.is bails and the ttf.jsx effect never re-fires if the belt has
+  // since been paged away by hand.
+  const [focusTtfSeq, setFocusTtfSeq] = React.useState(0);
   const [optimisticMode, setOptimisticMode] = React.useState(null);
   const [terminalOpen, setTerminalOpen] = React.useState(false);
   const [terminalSize, setTerminalSize] = React.useState('quarter');
@@ -115,7 +122,7 @@ function App() {
           <SubscreenTransition active={active}>
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               <div key="quest"    style={{ position: 'absolute', inset: 0, display: show('quest') }}><QuestStatus /></div>
-              <div key="map"      style={{ position: 'absolute', inset: 0, display: show('map') }}><MapScreen /></div>
+              <div key="map"      style={{ position: 'absolute', inset: 0, display: show('map') }}><MapScreen focusTtfDate={focusTtfDate} focusTtfSeq={focusTtfSeq} setFocusTtfDate={setFocusTtfDate} bumpFocusTtfSeq={() => setFocusTtfSeq(s => s + 1)} setActive={setActive} /></div>
               <div key="items"    style={{ position: 'absolute', inset: 0, display: show('items') }}><ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} /></div>
               <div key="ink"      style={{ position: 'absolute', inset: 0, display: show('ink') }}><InkScreen /></div>
               <div key="health"   style={{ position: 'absolute', inset: 0, display: show('health') }}><HealthScreen /></div>

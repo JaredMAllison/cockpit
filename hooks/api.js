@@ -4,7 +4,10 @@
 const HOSTS = {
   marlin:   'http://localhost:7832',
   projects: 'http://localhost:7833',
-  ttf:      'http://localhost:8000',
+  // :3000 is the canonical TTF — _ttf.md declares it and /ttf-push writes
+  // there, so every ttf_id in the vault refers to this instance's ids.
+  // :8000 and :8501 are separate, divergent databases (witnessed 2026-08-15).
+  ttf:      'http://localhost:3000',
   ariel:    'http://localhost:8002',
 };
 
@@ -48,13 +51,6 @@ function postTtfEvent(event) {
     body: JSON.stringify(event),
   });
 }
-function patchTtfEvent(id, changes) {
-  return fetch(`${HOSTS.ttf}/api/events/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(changes),
-  });
-}
 function deleteTtfEvent(id) {
   return fetch(`${HOSTS.ttf}/api/events/${id}`, { method: 'DELETE' });
 }
@@ -72,6 +68,7 @@ function fetchMarlinSnooze(task, minutes) {
   return fetch(`${HOSTS.marlin}/snooze?task=${encodeURIComponent(task)}&minutes=${minutes}`, { redirect: 'manual' });
 }
 function fetchMarlinTodayTasks() { return _fetch(`${HOSTS.marlin}/tasks/today`); }
+function fetchAllTasks() { return _fetch(`${HOSTS.marlin}/api/tasks`); }
 function markAdlDone(title) {
   return fetch(`${HOSTS.marlin}/done?task=${encodeURIComponent(title)}`, { redirect: 'manual' }).catch(() => {});
 }
