@@ -109,10 +109,42 @@ function TtfPanel(props) {
   }, [props.focusSeq]);
 
   // RAF render loop — drives belt animation, sway, bob.
+  //
+  // Every subscreen in app.jsx stays MOUNTED for the life of the session and is
+  // hidden with display:none (app.jsx:124-128). So this loop kept forcing a
+  // full React re-render of the belt at 60fps the entire time the operator was
+  // on Quest, Items, Ink or Health — which, on a cockpit meant to stay open all
+  // day, is most of the day.
+  //
+  // document.hidden does not cover that: the browser throttles rAF for a hidden
+  // TAB, never for a display:none subtree inside a visible one. Panel-level
+  // visibility has to be observed directly, and IntersectionObserver reports
+  // display:none as not-intersecting and fires only on change — so the check
+  // costs nothing per frame. Reading offsetParent in the loop would also work
+  // and would force a layout flush sixty times a second, trading one cost for
+  // another.
+  const onScreenRef = React.useRef(true);
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(es => {
+      onScreenRef.current = es[es.length - 1].isIntersecting;
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const [, force] = React.useReducer(x => x + 1, 0);
   React.useEffect(() => {
     let id;
-    const loop = () => { force(); id = requestAnimationFrame(loop); };
+    // The loop stays SCHEDULED while hidden and only skips the render, so
+    // returning to the panel resumes on the next frame with no restart logic.
+    // A skipped frame is one boolean read and one property read; the render it
+    // replaces is a full reconciliation of the belt subtree.
+    const loop = () => {
+      if (onScreenRef.current && !document.hidden) force();
+      id = requestAnimationFrame(loop);
+    };
     id = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(id);
   }, []);
