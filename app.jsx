@@ -14,8 +14,11 @@ const MapScreen = ({ focusTtfDate, setFocusTtfDate, setActive }) => (
     <div style={{ flex: 1, borderRight: '1px solid #1d1a16', overflow: 'hidden' }}>
       <TtfPanel focusDate={focusTtfDate} />
     </div>
-    <div style={{ width: 300, flexShrink: 0 }}>
+    <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid #1d1a16' }}>
       <TaskIndexPanel onFocusDate={(d) => { setFocusTtfDate(d); setActive('map'); }} />
+    </div>
+    <div style={{ width: 260, flexShrink: 0 }}>
+      <QuickhacksPanel />
     </div>
   </div>
 );
