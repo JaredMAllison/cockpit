@@ -79,14 +79,34 @@ function StateMapDetail({ cell, onBack }) {
 }
 
 function StateMapPanel() {
-  const { data, error } = usePoll(fetchStateMap, 30000);
+  const { data, error, loading } = usePoll(fetchStateMap, 30000);
   const [zoomed, setZoomed] = React.useState(null);
+  const [overflow, setOverflow] = React.useState(false);
+  const workPaneRef = React.useRef(null);
+  const machineRef = React.useRef(null);
+
+  const checkOverflow = React.useCallback(() => {
+    let overflowing = false;
+    if (workPaneRef.current && workPaneRef.current.scrollHeight > workPaneRef.current.clientHeight) {
+      overflowing = true;
+    }
+    if (!overflowing && machineRef.current && machineRef.current.scrollHeight > machineRef.current.clientHeight) {
+      overflowing = true;
+    }
+    setOverflow(overflowing);
+  }, []);
 
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setZoomed(null); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  React.useEffect(() => {
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [data, checkOverflow]);
 
   const cells = (data && data.cells) || [];
   const byGroup = (g) => cells.filter(c => c.group === g);
@@ -101,9 +121,11 @@ function StateMapPanel() {
         <span style={{ fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           <E path="panel.stateMap" fallback="State Map"/>
         </span>
-        <span style={{ fontSize: 10, color: (data && data.stale) || error ? '#c96442' : '#5a5249' }}>
-          {error ? '⚠ unreachable'
+        <span style={{ fontSize: 10, color: (data && data.stale) || error || overflow ? '#c96442' : '#5a5249' }}>
+          {loading ? 'loading…'
+                 : error ? '⚠ unreachable'
                  : data && data.stale ? `⚠ stale — ${data.stale_reason}`
+                 : overflow ? `⚠ ${cells.length} cells (some hidden)`
                  : `${cells.length} cells`}
         </span>
       </div>
@@ -115,12 +137,12 @@ function StateMapPanel() {
 
   return shell(
     <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-      <div style={{ flex: 1, padding: '14px 16px', borderRight: '1px solid #1d1a16', minWidth: 0 }}>
+      <div ref={workPaneRef} style={{ flex: 1, padding: '14px 16px', borderRight: '1px solid #1d1a16', minWidth: 0, overflow: 'hidden' }}>
         {SM_WORK_GROUPS.map(g =>
           <StateMapGroup key={g} label={g} cells={byGroup(g)} onZoom={setZoomed} />)}
       </div>
       {/* Machine half is ambient (ADR-054): dimmed at rest, asserts when degraded. */}
-      <div style={{ width: 260, flexShrink: 0, padding: '14px 16px' }}>
+      <div ref={machineRef} style={{ width: 260, flexShrink: 0, padding: '14px 16px', overflow: 'hidden' }}>
         {SM_MACHINE_GROUPS.map(g =>
           <StateMapGroup key={g} label={g} cells={byGroup(g)} onZoom={setZoomed}
                          dim={!byGroup(g).some(c => c.state === 'degraded')} />)}
