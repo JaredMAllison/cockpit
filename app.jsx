@@ -1,6 +1,6 @@
 // app.jsx — root component: sub-screen state, keyboard nav, editMode, LabelsProvider
 
-const SUBSCREEN_IDS = ['quest', 'map', 'items', 'ink', 'health'];
+const SUBSCREEN_IDS = ['quest', 'map', 'items', 'ink', 'health', 'state'];
 
 const QuestStatus = () => (
   <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -30,6 +30,10 @@ const InkScreen = () => (
 
 const HealthScreen = () => (
   <div style={{ width: '100%', height: '100%' }}><HealthDashboardPanel /></div>
+);
+
+const StateScreen = () => (
+  <div style={{ width: '100%', height: '100%' }}><StateMapPanel /></div>
 );
 
 const ItemsScreen = ({ arielFile, setArielFile, setActive }) => (
@@ -100,6 +104,7 @@ function App() {
       else if (e.key === '3') setActive('items');
       else if (e.key === '4') setActive('ink');
       else if (e.key === '5') setActive('health');
+      else if (e.key === '6') setActive('state');
       else if (e.key === 'ArrowRight' || e.key === ']') setActive(SUBSCREEN_IDS[Math.min(idx + 1, SUBSCREEN_IDS.length - 1)]);
       else if (e.key === 'ArrowLeft'  || e.key === '[') setActive(SUBSCREEN_IDS[Math.max(idx - 1, 0)]);
       else if (e.key === 'e') setEditMode(em => !em);
@@ -126,6 +131,7 @@ function App() {
               <div key="items"    style={{ position: 'absolute', inset: 0, display: show('items') }}><ItemsScreen arielFile={arielFile} setArielFile={setArielFile} setActive={setActive} /></div>
               <div key="ink"      style={{ position: 'absolute', inset: 0, display: show('ink') }}><InkScreen /></div>
               <div key="health"   style={{ position: 'absolute', inset: 0, display: show('health') }}><HealthScreen /></div>
+              <div key="state"    style={{ position: 'absolute', inset: 0, display: show('state') }}><StateScreen /></div>
             </div>
           </SubscreenTransition>
           <ThemeToggleButton />
