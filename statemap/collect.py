@@ -40,7 +40,9 @@ def collect_repos():
         # repos list rather than take the whole snapshot down.
         return repos
     for path in paths:
-        if not (path / ".git").is_dir():
+        # A git worktree's .git is a *file* (pointing at the main repo's
+        # gitdir), not a directory — .is_dir() would skip every worktree.
+        if not (path / ".git").exists():
             continue
         branch = _run(["git", "branch", "--show-current"], cwd=path)
         last = _run(["git", "log", "-1", "--format=%cs"], cwd=path)
