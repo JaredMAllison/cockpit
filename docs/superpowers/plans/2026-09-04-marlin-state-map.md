@@ -219,7 +219,9 @@ git commit -m "feat(statemap): state is a pure function of measures"
 
 **Interfaces:**
 - Consumes: `derive_state`, `explain_state` from `statemap.state`.
-- Produces: `work_cells(projects: list[dict], now: datetime) -> list[dict]`. Each cell is `{id, region, group, label, measures, state, why, overlays, detail}`.
+- Produces: `work_cells(projects: list[dict], now: datetime) -> list[dict]`. Each cell is `{id, region, group, label, measures, state, why, overlays, detail}`. Also `attach_overdue(projects: list[dict], tasks: list[dict], today: date) -> list[dict]`, which returns new project rows carrying an `overdue_tasks` count.
+
+**⚠️ Pre-flight finding, ruled before dispatch:** Marlin's `/api/projects` does **not** return an `overdue_tasks` field — verified against the live endpoint on 2026-09-04. Without a join, no Work cell could ever reach `needs-you` and the foreground half of the map would be permanently `quiet`/`moving`. `attach_overdue` closes that. Tasks come from a **different port**: `http://marlin:7832/api/tasks` (the webhook), not 7833 (the dashboard). Its shape is `{"generated", "count", "tasks": [{"slug", "title", "status", "project", "goal_date", "available_from", ...}]}`, and `project` is a wikilink string like `"[[oral-surgery-preop]]"` or `""`.
 
 **Context for the implementer:** Marlin already serves project rows at `http://marlin:7833/api/projects` (host: `http://localhost:7833`). It has already parsed the vault's frontmatter, so **do not re-parse it here** — the cockpit owns no logic. A real row looks like:
 
@@ -278,6 +280,53 @@ def test_overlays_ship_empty_for_v1():
 
 def test_non_active_projects_are_dropped():
     assert work_cells([dict(ROW, status="complete")], NOW) == []
+
+
+# --- attach_overdue: joins Marlin's task list onto project rows ---
+from datetime import date
+from statemap.work import attach_overdue
+
+TODAY = date(2026, 9, 4)
+TASKS = [
+    {"slug": "a", "status": "queued", "project": "[[lmf]]",  "goal_date": "2026-08-29"},
+    {"slug": "b", "status": "queued", "project": "[[lmf]]",  "goal_date": "2026-09-30"},
+    {"slug": "c", "status": "done",   "project": "[[lmf]]",  "goal_date": "2026-01-01"},
+    {"slug": "d", "status": "active", "project": "",         "goal_date": "2026-01-01"},
+    {"slug": "e", "status": "active", "project": "[[lmf]]",  "goal_date": None},
+]
+
+def test_overdue_counts_only_past_goal_dates():
+    assert attach_overdue([ROW], TASKS, TODAY)[0]["overdue_tasks"] == 1
+
+def test_done_and_cancelled_tasks_never_count_as_overdue():
+    tasks = [dict(TASKS[2], status=s) for s in ("done", "cancelled")]
+    assert attach_overdue([ROW], tasks, TODAY)[0]["overdue_tasks"] == 0
+
+def test_task_with_no_goal_date_is_not_overdue():
+    assert attach_overdue([ROW], [TASKS[4]], TODAY)[0]["overdue_tasks"] == 0
+
+def test_goal_date_today_is_not_yet_overdue():
+    tasks = [dict(TASKS[0], goal_date="2026-09-04")]
+    assert attach_overdue([ROW], tasks, TODAY)[0]["overdue_tasks"] == 0
+
+def test_wikilink_project_field_is_normalised_to_a_slug():
+    tasks = [{"slug": "z", "status": "queued", "project": "[[Projects/lmf|LMF]]",
+              "goal_date": "2026-01-01"}]
+    assert attach_overdue([ROW], tasks, TODAY)[0]["overdue_tasks"] == 1
+
+def test_orphan_tasks_do_not_crash_or_attach_anywhere():
+    tasks = [{"slug": "z", "status": "queued", "project": "[[no-such-project]]",
+              "goal_date": "2026-01-01"}]
+    assert attach_overdue([ROW], tasks, TODAY)[0]["overdue_tasks"] == 0
+
+def test_attach_overdue_does_not_mutate_its_input():
+    original = dict(ROW)
+    attach_overdue([ROW], TASKS, TODAY)
+    assert ROW == original
+
+def test_malformed_goal_date_is_skipped_not_fatal():
+    tasks = [{"slug": "z", "status": "queued", "project": "[[lmf]]", "goal_date": "soon"}]
+    assert attach_overdue([ROW], tasks, TODAY)[0]["overdue_tasks"] == 0
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -344,6 +393,58 @@ def _group(row: dict) -> str:
     return f"P{priority}" if priority in (1, 2, 3) else "R"
 
 
+OPEN_TASK_STATUSES = {"queued", "active", "waiting"}
+
+
+def attach_overdue(projects: list, tasks: list, today) -> list:
+    """Join Marlin's task list onto project rows as an `overdue_tasks` count.
+
+    Marlin's /api/projects carries no overdue count, so without this every
+    Work cell would derive `quiet` or `moving` forever and the foreground
+    half of the map would never light. Tasks come from the webhook on 7832,
+    a different service from the dashboard on 7833.
+
+    Returns new dicts -- never mutates the caller's rows.
+    """
+    counts = {}
+    for task in tasks:
+        if task.get("status") not in OPEN_TASK_STATUSES:
+            continue
+        slug = _project_slug(task.get("project"))
+        if not slug:
+            continue
+        goal = _parse_date(task.get("goal_date"))
+        # `today` is not overdue: a task due today is due, not late.
+        if goal is not None and goal < today:
+            counts[slug] = counts.get(slug, 0) + 1
+    return [dict(row, overdue_tasks=counts.get(row["slug"], 0)) for row in projects]
+
+
+def _project_slug(value):
+    """Normalise a frontmatter wikilink to a bare slug.
+
+    Handles "", "[[lmf]]", "[[Projects/lmf|LMF]]", and a bare "lmf".
+    """
+    if not value:
+        return None
+    text = value.strip()
+    if text.startswith("[[") and text.endswith("]]"):
+        text = text[2:-2]
+    text = text.split("|", 1)[0]          # drop a display alias
+    text = text.rsplit("/", 1)[-1]        # drop a folder prefix
+    return text.removesuffix(".md").strip() or None
+
+
+def _parse_date(value):
+    from datetime import date as _date
+    if not value:
+        return None
+    try:
+        return _date.fromisoformat(str(value))
+    except (ValueError, TypeError):
+        return None
+
+
 def _roadmap(row: dict):
     """None when the project has no roadmap file. Absent is not zero:
     tiers 2-4 have no roadmap by design, and a 0% bar would misreport that
@@ -358,7 +459,7 @@ def _roadmap(row: dict):
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd ~/git/cockpit && python3 -m pytest tests/test_work.py -v`
-Expected: 8 passed
+Expected: 16 passed
 
 - [ ] **Step 5: Commit**
 
@@ -698,17 +799,19 @@ print('contract OK:', len(d['repos']), 'repos,', len(d['services']), 'services')
 
 Expected: `contract OK: 10 repos, 9 services` (counts will vary)
 
-- [ ] **Step 3: Keep the snapshot out of git**
+- [ ] **Step 3: Confirm the snapshot is already git-ignored**
 
-The vault is a git repo and this file changes every ten minutes. Committing it would bury real vault history under snapshot churn.
+✅ **Already done by the controller** (Marlin vault commit `2e6c3d3`). **Do not touch the Marlin vault repo** — it is a different repository from this one. Just verify:
 
 ```bash
-cd ~/Documents/Obsidian/Marlin
-grep -qxF 'System/StateMap/' .gitignore || echo 'System/StateMap/' >> .gitignore
-git add .gitignore && git commit -m "chore: ignore machine-generated State Map snapshots"
+cd ~/Documents/Obsidian/Marlin && git check-ignore -v System/StateMap/machine.json
 ```
 
-- [ ] **Step 4: Install the systemd user timer**
+Expected: a line naming `.gitignore` and the `System/StateMap/` pattern.
+
+- [ ] **Step 4: Write the systemd user units — install the files, do NOT enable**
+
+⚠️ **Ruling (pre-flight):** this build runs in a git worktree at `~/git/cockpit-statemap`, which is deleted after merge. `ExecStart` points at the post-merge path `~/git/cockpit`, and `enable --now` is deferred to the Post-merge section — enabling a timer that executes a path inside a doomed worktree would leave a broken unit behind. Write the files, then verify the collector by running it directly from the worktree.
 
 ```bash
 cat > ~/.config/systemd/user/statemap-collect.service <<'EOF'
@@ -733,13 +836,11 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
-chmod +x ~/git/cockpit/statemap/collect.py
+chmod +x ~/git/cockpit-statemap/statemap/collect.py
 systemctl --user daemon-reload
-systemctl --user enable --now statemap-collect.timer
-systemctl --user list-timers statemap-collect.timer
 ```
 
-Expected: the timer is listed with a NEXT time inside 10 minutes.
+Expected: `daemon-reload` returns silently. Do **not** run `enable --now` here — that happens post-merge, once `~/git/cockpit` actually contains `statemap/collect.py`.
 
 - [ ] **Step 5: Commit**
 
@@ -767,7 +868,10 @@ git commit -m "feat(statemap): host-side collector — container has no docker s
 ```python
 # tests/test_assemble.py
 from datetime import datetime
+from datetime import date
+
 from statemap.assemble import assemble
+from statemap.work import attach_overdue
 
 NOW = datetime(2026, 9, 4, 9, 0, 0)
 PROJECTS = [
@@ -853,7 +957,7 @@ def _group_rank(group: str) -> int:
 - [ ] **Step 4: Run the whole suite**
 
 Run: `cd ~/git/cockpit && python3 -m pytest tests/ -v`
-Expected: 33 passed
+Expected: 41 passed
 
 - [ ] **Step 5: Commit**
 
@@ -890,7 +994,10 @@ Insert immediately after the `api/vault/context` block in `do_GET`:
 - [ ] **Step 2: Add the helper and its cache near `vault_context()`**
 
 ```python
-MARLIN_URL = os.environ.get("MARLIN_URL", "http://marlin:7833")
+# Two Marlin services, two ports: the dashboard serves projects on 7833,
+# the webhook serves tasks on 7832. They are not interchangeable.
+MARLIN_PROJECTS_URL = os.environ.get("MARLIN_PROJECTS_URL", "http://marlin:7833/api/projects")
+MARLIN_TASKS_URL = os.environ.get("MARLIN_TASKS_URL", "http://marlin:7832/api/tasks")
 STATEMAP_SNAPSHOT = VAULT / "System" / "StateMap" / "machine.json"
 STATEMAP_CACHE_TTL = 30  # seconds; a tuning knob, not a design decision
 _statemap_cache = {"at": 0.0, "payload": None}
@@ -905,11 +1012,9 @@ def _state_map_payload():
     if _statemap_cache["payload"] and (now_mono - _statemap_cache["at"]) < STATEMAP_CACHE_TTL:
         return _statemap_cache["payload"]
 
-    try:
-        with urllib.request.urlopen(f"{MARLIN_URL}/api/projects", timeout=5) as resp:
-            projects = json.loads(resp.read())
-    except (urllib.error.URLError, OSError, ValueError):
-        projects = []
+    projects = _fetch_json(MARLIN_PROJECTS_URL, default=[])
+    tasks = (_fetch_json(MARLIN_TASKS_URL, default={}) or {}).get("tasks", [])
+    projects = attach_overdue(projects, tasks, date.today())
 
     try:
         snapshot = json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8"))
@@ -923,6 +1028,16 @@ def _state_map_payload():
 
     _statemap_cache.update(at=now_mono, payload=payload)
     return payload
+
+
+def _fetch_json(url, default):
+    """GET JSON, or `default` on any failure. Never raises: one unreachable
+    upstream must degrade a half of the map, not blank the whole panel."""
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            return json.loads(resp.read())
+    except (urllib.error.URLError, OSError, ValueError):
+        return default
 ```
 
 - [ ] **Step 3: Add the import at the top of `cockpit.py`**
@@ -935,7 +1050,9 @@ from statemap.assemble import assemble
 
 ```bash
 cd ~/git/cockpit
-MARLIN_URL=http://localhost:7833 COCKPIT_PORT=9199 python3 cockpit.py &
+MARLIN_PROJECTS_URL=http://localhost:7833/api/projects \
+ MARLIN_TASKS_URL=http://localhost:7832/api/tasks \
+ COCKPIT_PORT=9199 python3 cockpit.py &
 sleep 2
 curl -s http://localhost:9199/api/state-map | python3 -m json.tool | head -40
 kill %1
@@ -1125,7 +1242,9 @@ Add after the `panels/health.jsx` line (line 64):
 
 ```bash
 cd ~/git/cockpit
-MARLIN_URL=http://localhost:7833 COCKPIT_PORT=9199 python3 cockpit.py &
+MARLIN_PROJECTS_URL=http://localhost:7833/api/projects \
+ MARLIN_TASKS_URL=http://localhost:7832/api/tasks \
+ COCKPIT_PORT=9199 python3 cockpit.py &
 sleep 2 && xdg-open http://localhost:9199
 ```
 
@@ -1187,7 +1306,9 @@ After the `health` div:
 ```bash
 cd ~/git/cockpit && python3 -m pytest tests/ -v
 python3 statemap/collect.py
-MARLIN_URL=http://localhost:7833 COCKPIT_PORT=9199 python3 cockpit.py &
+MARLIN_PROJECTS_URL=http://localhost:7833/api/projects \
+ MARLIN_TASKS_URL=http://localhost:7832/api/tasks \
+ COCKPIT_PORT=9199 python3 cockpit.py &
 sleep 2 && xdg-open http://localhost:9199
 ```
 
@@ -1215,7 +1336,7 @@ gh pr create --title "feat: Marlin State Map — cockpit panel five" \
 
 Work half derives from Marlin's /api/projects; Machine half from a host-side
 collector, because the cockpit container has only the vault mounted and no
-Docker socket. 33 unit tests over the pure derivation layer.
+Docker socket. 41 unit tests over the pure derivation layer.
 
 Deferred to v2: detail zoom, judgment overlays, Loom edges, TTF balloon drift,
 Tori's map.
@@ -1232,5 +1353,15 @@ Per ADR-055, production images build from a committed ref, never a dirty tree. A
 ```bash
 cd ~/git && docker compose build cockpit && docker compose up -d cockpit
 ```
+
+Then enable the collector timer against the merged path:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now statemap-collect.timer
+systemctl --user list-timers statemap-collect.timer
+```
+
+Expected: the timer is listed with a NEXT time inside 10 minutes.
 
 Then update the stale roadmap: `Projects/cognitive-prosthetic-cockpit-roadmap.md` still says "Phase 1 — Shell: implementation not started", which has been false since at least 2026-08-16.
