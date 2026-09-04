@@ -113,6 +113,10 @@ function StateMapPanel() {
 
   const cells = (data && data.cells) || [];
   const byGroup = (g) => cells.filter(c => c.group === g);
+  // A cell whose group isn't one we know about must still render somewhere:
+  // "off-screen means nonexistent" is the panel's whole promise (ADR-057).
+  const knownGroups = [...SM_WORK_GROUPS, ...SM_MACHINE_GROUPS];
+  const otherCells = cells.filter(c => !knownGroups.includes(c.group));
   const zoomedCell = zoomed && cells.find(c => c.id === zoomed);
 
   const shell = (children) => (
@@ -149,6 +153,7 @@ function StateMapPanel() {
         {SM_MACHINE_GROUPS.map(g =>
           <StateMapGroup key={g} label={g} cells={byGroup(g)} onZoom={setZoomed}
                          dim={!byGroup(g).some(c => c.state === 'degraded')} />)}
+        <StateMapGroup label="other" cells={otherCells} onZoom={setZoomed} />
       </div>
     </div>
   );
