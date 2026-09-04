@@ -1,0 +1,6 @@
+[Unit]
+Description=Marlin State Map — host state collector
+
+[Service]
+Type=oneshot
+ExecStart=%h/git/cockpit/statemap/collect.py

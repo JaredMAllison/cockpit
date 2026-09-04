@@ -10,7 +10,10 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from datetime import datetime
+from datetime import date, datetime
+
+from statemap.assemble import assemble
+from statemap.work import attach_overdue
 
 mimetypes.add_type("text/javascript", ".jsx")
 
@@ -62,6 +65,80 @@ def check_service(name, url, timeout=5):
     except (urllib.error.URLError, urllib.error.HTTPError, OSError):
         elapsed = int((time.time() - start) * 1000)
         return "error", f"{elapsed}ms"
+
+
+# Two Marlin services, two ports: the dashboard serves projects on 7833,
+# the webhook serves tasks on 7832. They are not interchangeable.
+MARLIN_PROJECTS_URL = os.environ.get("MARLIN_PROJECTS_URL", "http://marlin:7833/api/projects")
+MARLIN_TASKS_URL = os.environ.get("MARLIN_TASKS_URL", "http://marlin:7832/api/tasks")
+STATEMAP_SNAPSHOT = VAULT / "System" / "StateMap" / "machine.json"
+STATEMAP_CACHE_TTL = 30  # seconds; a tuning knob, not a design decision
+_statemap_cache = {"at": 0.0, "payload": None}
+
+
+def _state_map_payload():
+    """Assemble the State Map payload, cached briefly so the panel stays
+    responsive. Never raises: an unreachable Marlin or a missing snapshot
+    degrades to an empty half with `stale` set, because a map that goes
+    blank on one failed fetch is worse than one that says it is stale."""
+    now_mono = time.time()
+    if _statemap_cache["payload"] and (now_mono - _statemap_cache["at"]) < STATEMAP_CACHE_TTL:
+        return _statemap_cache["payload"]
+
+    # None means the fetch failed; [] / {} are legitimate empty responses.
+    # A healthy Marlin that legitimately has zero active projects must not
+    # be indistinguishable from an unreachable one -- collapsing both to
+    # "falsy" made `stale` assert a falsehood about a live, current map.
+    projects_raw = _fetch_json(MARLIN_PROJECTS_URL)
+    tasks_raw = _fetch_json(MARLIN_TASKS_URL)
+
+    unreachable = []
+    if projects_raw is None:
+        unreachable.append("Marlin projects unreachable")
+    if tasks_raw is None:
+        # A failed tasks fetch must not silently read as "no overdue tasks
+        # anywhere" -- attach_overdue can't tell the difference on its own,
+        # so the gap has to be named here, at the point where we still know.
+        unreachable.append("Marlin tasks unreachable")
+
+    tasks = (tasks_raw or {}).get("tasks", [])
+    projects = attach_overdue(projects_raw or [], tasks, date.today())
+
+    try:
+        snapshot = json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        snapshot = {}
+
+    # TZ gap: cockpit-dev in ~/git/docker-compose.yml sets no TZ env var, so
+    # datetime.now() here returns UTC in that container while machine.json's
+    # generated_at (written host-local by statemap/collect.py) stays PDT/PST.
+    # That skews every staleness comparison in statemap/machine.py by the UTC
+    # offset -- reproduced empirically in task-6-report.md (a ~16-minute-old
+    # snapshot measured as ~7 hours old). Prod's `cockpit` service sets
+    # TZ=America/Los_Angeles and is unaffected. This is a cheap note, not a
+    # fix: the durable fix is UTC end-to-end across collect.py, machine.py,
+    # and this endpoint, which touches three already-closed modules and is
+    # deferred to the whole-branch review.
+    payload = assemble(projects, snapshot, datetime.now())
+    if unreachable:
+        payload["stale"] = True
+        reason = "; ".join(unreachable)
+        payload["stale_reason"] = f"{payload['stale_reason']}; {reason}" if payload["stale_reason"] else reason
+
+    _statemap_cache.update(at=now_mono, payload=payload)
+    return payload
+
+
+def _fetch_json(url):
+    """GET JSON, or None on any failure. Never raises: one unreachable
+    upstream must degrade a half of the map, not blank the whole panel.
+    None means failure; a genuine empty response ([] or {}) is success and
+    must stay distinguishable from the upstream being down."""
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            return json.loads(resp.read())
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
 
 
 def vault_context():
@@ -165,6 +242,11 @@ class CockpitHandler(BaseHTTPRequestHandler):
         if rel == "api/vault/context":
             ctx = vault_context()
             code, ctype, body = _json(ctx)
+            self._respond(code, body, ctype)
+            return
+
+        if rel == "api/state-map":
+            code, ctype, body = _json(_state_map_payload())
             self._respond(code, body, ctype)
             return
 
