@@ -14,6 +14,7 @@ const SUBS = [
   { id: 'items',  fallback: 'Items',         s: 's3', hotkey: '3' },
   { id: 'ink',    fallback: 'Ink Blotter',   s: 's4', hotkey: '4' },
   { id: 'health', fallback: 'Health',        s: 's5', hotkey: '5' },
+  { id: 'state',  fallback: 'State Map',     s: 's6', hotkey: '6' },
 ];
 
 function CornerFlourish({ rotation = 0, size = 36, palette }) {

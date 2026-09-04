@@ -1,7 +1,7 @@
 // subscreen-transition.jsx — 220ms cross-fade + 12px slide, chrome stays fixed.
 // Direction: forward (quest→map→items) slides right-to-left; backward slides left-to-right.
 
-const SUBSCREEN_ORDER = ['quest', 'map', 'items', 'ink', 'health'];
+const SUBSCREEN_ORDER = ['quest', 'map', 'items', 'ink', 'health', 'state'];
 
 function SubscreenTransition({ active, children }) {
   const [displayed, setDisplayed] = React.useState(active);
