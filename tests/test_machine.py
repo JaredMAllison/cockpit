@@ -57,3 +57,25 @@ def test_missing_snapshot_has_no_age():
 
 def test_stale_threshold_is_declared():
     assert SNAPSHOT_STALE_AFTER == timedelta(minutes=30)
+
+def test_overdue_backup_degraded_why_includes_age():
+    # Regression: degraded backup via age must report age, not the override.
+    # Line 69 in machine.py: on degraded, the override is discarded.
+    snap = dict(SNAP, backup={"unit": "ivy-backup.service",
+                              "last_run": "2026-09-01T00:00:00", "result": "success"})
+    cell = _by_id(machine_cells(snap, NOW))["backup"]
+    assert cell["state"] == "degraded"
+    # explain_state uses failure_reason when failing=True, which contains the age
+    assert "h ago" in cell["why"]
+    assert "failing:" in cell["why"]
+
+def test_failed_backup_degraded_why_reports_failure():
+    # Regression: degraded backup via failure must report the failure, not the override.
+    # Line 69 in machine.py: on degraded, the override is discarded.
+    snap = dict(SNAP, backup={"unit": "ivy-backup.service",
+                              "last_run": "2026-09-04T08:00:00", "result": "failed"})
+    cell = _by_id(machine_cells(snap, NOW))["backup"]
+    assert cell["state"] == "degraded"
+    # explain_state uses failure_reason when failing=True
+    assert "backup failed" in cell["why"]
+    assert "failing:" in cell["why"]
