@@ -86,11 +86,14 @@ function StateMapPanel() {
   const machineRef = React.useRef(null);
 
   const checkOverflow = React.useCallback(() => {
+    // Panes are unmounted while zoomed; cannot measure, do not assert
+    if (!workPaneRef.current || !machineRef.current) return;
+
     let overflowing = false;
-    if (workPaneRef.current && workPaneRef.current.scrollHeight > workPaneRef.current.clientHeight) {
+    if (workPaneRef.current.scrollHeight > workPaneRef.current.clientHeight) {
       overflowing = true;
     }
-    if (!overflowing && machineRef.current && machineRef.current.scrollHeight > machineRef.current.clientHeight) {
+    if (!overflowing && machineRef.current.scrollHeight > machineRef.current.clientHeight) {
       overflowing = true;
     }
     setOverflow(overflowing);
@@ -106,7 +109,7 @@ function StateMapPanel() {
     checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
-  }, [data, checkOverflow]);
+  }, [data, zoomed, checkOverflow]);
 
   const cells = (data && data.cells) || [];
   const byGroup = (g) => cells.filter(c => c.group === g);
