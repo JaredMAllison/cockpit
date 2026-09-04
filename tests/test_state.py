@@ -35,3 +35,26 @@ def test_zero_overdue_is_not_needs_you():
 def test_explain_names_the_number():
     # "If a cell is lit, 'why' answers with a number."
     assert "2" in explain_state({"overdue_tasks": 2}, NOW)
+
+def test_explain_degraded_with_failure_reason():
+    # When caller supplies failure_reason, it should be surfaced verbatim.
+    m = {"failing": True, "failure_reason": "connection timeout"}
+    assert explain_state(m, NOW) == "failing: connection timeout"
+
+def test_explain_degraded_default_when_no_reason():
+    # When no failure_reason is supplied, the default should indicate missing data.
+    m = {"failing": True}
+    result = explain_state(m, NOW)
+    assert result == "failing: no reason provided"
+
+def test_explain_overdue_precedence_over_dirty():
+    # When both overdue_tasks and dirty_files are set, overdue must win.
+    m = {"overdue_tasks": 3, "dirty_files": 2}
+    result = explain_state(m, NOW)
+    assert "3 overdue task(s)" == result
+
+def test_explain_failing_precedence_over_overdue():
+    # When both failing and overdue_tasks are set, failing must win.
+    m = {"failing": True, "failure_reason": "service down", "overdue_tasks": 5}
+    result = explain_state(m, NOW)
+    assert result == "failing: service down"

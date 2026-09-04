@@ -31,7 +31,7 @@ def derive_state(measures: dict, now: datetime) -> str:
 def explain_state(measures: dict, now: datetime) -> str:
     """One sentence naming the number that produced the state."""
     if measures.get("failing"):
-        return f"failing: {measures.get('failure_reason', 'unreachable')}"
+        return f"failing: {measures.get('failure_reason', 'no reason provided')}"
 
     overdue = measures.get("overdue_tasks", 0)
     if overdue:
