@@ -124,6 +124,7 @@ function StateMapPanel() {
   }, [zoomed, checkOverflow]);
 
   const cells = (data && data.cells) || [];
+  const alerting = Boolean((data && data.stale) || error || overflow);
   const byGroup = (g) => cells.filter(c => c.group === g);
   // A cell whose group isn't one we know about must still render somewhere:
   // "off-screen means nonexistent" is the panel's whole promise (ADR-057).
@@ -135,18 +136,26 @@ function StateMapPanel() {
     <div style={{ background: '#0e0c0a', color: '#e8e3d8', fontFamily: SM_FONT,
                   width: '100%', height: '100%', position: 'relative',
                   display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Three columns so the status sits in the TRUE centre regardless of the
+          title's width. It cannot be right-aligned: the operator identity badge
+          in app.jsx is absolutely positioned at top:6 right:10 over the whole
+          frame, and obscures anything the panel puts there. */}
       <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #1d1a16',
-                    display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
-        <span style={{ fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                    display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
+        <span style={{ flex: 1, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           <E path="panel.stateMap" fallback="State Map"/>
         </span>
-        <span style={{ fontSize: 10, color: (data && data.stale) || error || overflow ? '#c96442' : '#5a5249' }}>
+        <span style={{ flex: '0 0 auto', textAlign: 'center', fontSize: 12, letterSpacing: 0.3,
+                       fontWeight: alerting ? 600 : 400,
+                       color: alerting ? '#e0764f' : '#9a9286' }}>
           {loading ? 'loading…'
                  : error ? '⚠ unreachable'
                  : data && data.stale ? `⚠ stale — ${data.stale_reason}`
                  : overflow ? `⚠ ${cells.length} cells (some hidden)`
                  : `${cells.length} cells`}
         </span>
+        {/* Balances column 1 so the centre column is genuinely centred. */}
+        <span style={{ flex: 1 }} aria-hidden="true" />
       </div>
       {children}
     </div>
