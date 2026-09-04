@@ -1387,6 +1387,35 @@ print('stale:', d['stale'], d['stale_reason'])"
 
 Expect both regions populated. **Work cells at zero means this step did not take.**
 
+### The Development Cockpit (`:9110`) needs its own fix — different value
+
+`:9110` is **not** a container. It is systemd `cockpit.service`, a host process serving `~/git/cockpit` **live from disk** (`Hardware/gretchen.md` Port Map). So the panel appears there the moment the branch merges — but two things are needed:
+
+1. **Restart the service.** JSX is re-read per request, so panel files appear on a browser reload, but `cockpit.py` changed and Python does not hot-reload.
+2. **Give it the Marlin URLs**, or it hits the same `marlin:7833` defaults and shows the same empty Work half. Verified: `marlin` does not resolve on the host either. Dev needs **`localhost`**, not `host.docker.internal` — it is not in a container.
+
+```bash
+systemctl --user edit --full cockpit.service   # add the two Environment lines below
+```
+
+```
+Environment=MARLIN_PROJECTS_URL=http://localhost:7833/api/projects
+Environment=MARLIN_TASKS_URL=http://localhost:7832/api/tasks
+```
+
+```bash
+systemctl --user daemon-reload && systemctl --user restart cockpit.service
+curl -s localhost:9110/api/state-map | python3 -c "
+import json,sys; from collections import Counter
+d=json.load(sys.stdin); print(len(d['cells']), Counter(c['region'] for c in d['cells']), d['stale_reason'])"
+```
+
+Expect both regions populated. Work cells at zero means the env did not take.
+
+⚠️ **The TZ finding does not apply here.** It concerns the compose service `cockpit-dev` (8081), which the Port Map records as *declared but NOT running* — `docker ps -a` matches zero containers. `:9110` is a host process and inherits host TZ.
+
+🔑 **Worth knowing on dev:** the dev cockpit's existing ServiceLights read all-red as a config artefact, not a fault. The State Map's Machine half does **not** share that defect — its service cells come from the collector's `docker ps` on the host, so they will be accurate on `:9110` even while the lights beside them are not.
+
 ### Then rebuild
 
 
