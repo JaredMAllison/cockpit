@@ -111,6 +111,18 @@ function StateMapPanel() {
     return () => window.removeEventListener('resize', checkOverflow);
   }, [data, zoomed, checkOverflow]);
 
+  React.useEffect(() => {
+    // Panels are display:none'd rather than unmounted (app.jsx), so the
+    // first measurement above can land on a zero-height box. Re-check once
+    // the panes actually acquire real dimensions (e.g. the tab becomes
+    // visible) rather than waiting on the next window resize.
+    if (!workPaneRef.current || !machineRef.current) return;
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(workPaneRef.current);
+    ro.observe(machineRef.current);
+    return () => ro.disconnect();
+  }, [zoomed, checkOverflow]);
+
   const cells = (data && data.cells) || [];
   const byGroup = (g) => cells.filter(c => c.group === g);
   // A cell whose group isn't one we know about must still render somewhere:
