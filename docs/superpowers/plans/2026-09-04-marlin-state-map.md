@@ -1348,10 +1348,12 @@ Tori's map.
 
 ## Post-merge
 
-Per ADR-055, production images build from a committed ref, never a dirty tree. After merge, rebuild and restart the cockpit container:
+Per ADR-055, production images build from a committed ref, never a dirty tree.
+
+**Both cockpit services rebuild.** Operator decision, 2026-09-04: *"Rebuild both. Tori's cockpit is her specific window into My Exobrain. Its not a shared surface for her material also. Its all me and she is another operator."* This resolves the design spec's open question 4. The "HUDs do not federate" argument concerned a surface accruing **other people's** state; `cockpit-tori` mounts the same vault and shows only Jared's material, so the concern does not apply — this is one private HUD viewed through a second operator's window, not a federated one. After merge, rebuild and restart the cockpit container:
 
 ```bash
-cd ~/git && docker compose build cockpit && docker compose up -d cockpit
+cd ~/git && docker compose build cockpit cockpit-tori && docker compose up -d cockpit cockpit-tori
 ```
 
 Then enable the collector timer against the merged path:
