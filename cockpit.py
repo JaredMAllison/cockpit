@@ -85,32 +85,60 @@ def _state_map_payload():
     if _statemap_cache["payload"] and (now_mono - _statemap_cache["at"]) < STATEMAP_CACHE_TTL:
         return _statemap_cache["payload"]
 
-    projects = _fetch_json(MARLIN_PROJECTS_URL, default=[])
-    tasks = (_fetch_json(MARLIN_TASKS_URL, default={}) or {}).get("tasks", [])
-    projects = attach_overdue(projects, tasks, date.today())
+    # None means the fetch failed; [] / {} are legitimate empty responses.
+    # A healthy Marlin that legitimately has zero active projects must not
+    # be indistinguishable from an unreachable one -- collapsing both to
+    # "falsy" made `stale` assert a falsehood about a live, current map.
+    projects_raw = _fetch_json(MARLIN_PROJECTS_URL)
+    tasks_raw = _fetch_json(MARLIN_TASKS_URL)
+
+    unreachable = []
+    if projects_raw is None:
+        unreachable.append("Marlin projects unreachable")
+    if tasks_raw is None:
+        # A failed tasks fetch must not silently read as "no overdue tasks
+        # anywhere" -- attach_overdue can't tell the difference on its own,
+        # so the gap has to be named here, at the point where we still know.
+        unreachable.append("Marlin tasks unreachable")
+
+    tasks = (tasks_raw or {}).get("tasks", [])
+    projects = attach_overdue(projects_raw or [], tasks, date.today())
 
     try:
         snapshot = json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         snapshot = {}
 
+    # TZ gap: cockpit-dev in ~/git/docker-compose.yml sets no TZ env var, so
+    # datetime.now() here returns UTC in that container while machine.json's
+    # generated_at (written host-local by statemap/collect.py) stays PDT/PST.
+    # That skews every staleness comparison in statemap/machine.py by the UTC
+    # offset -- reproduced empirically in task-6-report.md (a ~16-minute-old
+    # snapshot measured as ~7 hours old). Prod's `cockpit` service sets
+    # TZ=America/Los_Angeles and is unaffected. This is a cheap note, not a
+    # fix: the durable fix is UTC end-to-end across collect.py, machine.py,
+    # and this endpoint, which touches three already-closed modules and is
+    # deferred to the whole-branch review.
     payload = assemble(projects, snapshot, datetime.now())
-    if not projects:
+    if unreachable:
         payload["stale"] = True
-        payload["stale_reason"] = (payload["stale_reason"] + "; " if payload["stale_reason"] else "") + "Marlin unreachable"
+        reason = "; ".join(unreachable)
+        payload["stale_reason"] = f"{payload['stale_reason']}; {reason}" if payload["stale_reason"] else reason
 
     _statemap_cache.update(at=now_mono, payload=payload)
     return payload
 
 
-def _fetch_json(url, default):
-    """GET JSON, or `default` on any failure. Never raises: one unreachable
-    upstream must degrade a half of the map, not blank the whole panel."""
+def _fetch_json(url):
+    """GET JSON, or None on any failure. Never raises: one unreachable
+    upstream must degrade a half of the map, not blank the whole panel.
+    None means failure; a genuine empty response ([] or {}) is success and
+    must stay distinguishable from the upstream being down."""
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:
             return json.loads(resp.read())
     except (urllib.error.URLError, OSError, ValueError):
-        return default
+        return None
 
 
 def vault_context():
