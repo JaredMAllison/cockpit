@@ -103,3 +103,10 @@ function appendInbox(text) {
     body: JSON.stringify({ text }),
   }).then(r => r.json());
 }
+// State Map — cockpit server (same origin), see statemap/ for derivation
+function fetchStateMap() {
+  return fetch('/api/state-map').then(r => {
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText} — /api/state-map`);
+    return r.json();
+  });
+}
