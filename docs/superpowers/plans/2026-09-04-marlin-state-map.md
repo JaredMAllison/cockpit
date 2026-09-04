@@ -1348,6 +1348,48 @@ Tori's map.
 
 ## Post-merge
 
+### ⛔ REQUIRED FIRST — the Work half is empty in production without this
+
+**Found by the final whole-branch review, 2026-09-04, and verified.** `cockpit.py`'s shipped defaults are `http://marlin:7833/api/projects` and `http://marlin:7832/api/tasks`. Neither resolves from inside the cockpit container:
+
+- The real Marlin APIs are **host processes** (`ss` shows pids 1119/1120 on `0.0.0.0:7832-3`), not containers.
+- `git-marlin-1` is on **no Docker network at all** and exposes only `7832/tcp`, so the name `marlin` does not resolve from `git-cockpit-1`.
+- Port **7833 exists in no container whatsoever**.
+
+Proven with the shipped defaults: `regions: {machine: 21}`, **zero work cells**, `stale_reason: "... Marlin projects unreachable; Marlin tasks unreachable"`. The panel would render its ambient half and nothing else — and, because the endpoint degrades rather than erroring, it would look like a working map with no projects.
+
+⚠️ **A host-side smoke test cannot catch this**, because on the host the overrides are supplied on the command line. That is exactly how it was missed during the build.
+
+**Edit `~/git/docker-compose.yml`** — the operator's deploy file, outside this repo — adding to **both** `cockpit` and `cockpit-tori`:
+
+```yaml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - MARLIN_PROJECTS_URL=http://host.docker.internal:7833/api/projects
+      - MARLIN_TASKS_URL=http://host.docker.internal:7832/api/tasks
+```
+
+Prefer `host.docker.internal:host-gateway` over hardcoding `172.20.0.1` — the bridge subnet moves when Docker recreates the network.
+
+**While in that file:** add `TZ=America/Los_Angeles` to `cockpit-dev`, which lacks it. Both prod services already set it. This closes the deferred TZ finding for the only target that had it — a TZ-less container also makes `date.today()` roll a day early after 17:00, counting tasks overdue before they are.
+
+**Verify after `up -d`, from inside the container rather than the host:**
+
+```bash
+docker exec git-cockpit-1 python3 -c "
+import json,urllib.request
+d=json.load(urllib.request.urlopen('http://localhost:8080/api/state-map'))
+from collections import Counter
+print('cells:', len(d['cells']), Counter(c['region'] for c in d['cells']))
+print('stale:', d['stale'], d['stale_reason'])"
+```
+
+Expect both regions populated. **Work cells at zero means this step did not take.**
+
+### Then rebuild
+
+
 Per ADR-055, production images build from a committed ref, never a dirty tree.
 
 **Both cockpit services rebuild.** Operator decision, 2026-09-04: *"Rebuild both. Tori's cockpit is her specific window into My Exobrain. Its not a shared surface for her material also. Its all me and she is another operator."* This resolves the design spec's open question 4. The "HUDs do not federate" argument concerned a surface accruing **other people's** state; `cockpit-tori` mounts the same vault and shows only Jared's material, so the concern does not apply — this is one private HUD viewed through a second operator's window, not a federated one. After merge, rebuild and restart the cockpit container:
