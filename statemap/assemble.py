@@ -12,6 +12,32 @@ from .work import work_cells
 GROUP_ORDER = ["P1", "P2", "P3", "R", "services", "repos", "backup"]
 
 
+def _remove_datetimes(val):
+    """Recursively strip datetime objects for JSON serialization.
+
+    Defensive across nested structures. While machine.py only puts
+    branch/result/{} into detail and work.py's detail is datetime-free,
+    this catches constraint violations early, preventing json.dumps
+    failure in Task 6's endpoint.
+    """
+    if isinstance(val, datetime):
+        return None
+    elif isinstance(val, dict):
+        result = {}
+        for k, v in val.items():
+            if not isinstance(v, datetime):
+                result[k] = _remove_datetimes(v)
+        return result
+    elif isinstance(val, list):
+        result = []
+        for v in val:
+            if not isinstance(v, datetime):
+                result.append(_remove_datetimes(v))
+        return result
+    else:
+        return val
+
+
 def assemble(projects: list, snapshot: dict, now: datetime) -> dict:
     cells = work_cells(projects, now) + machine_cells(snapshot or {}, now)
     cells.sort(key=lambda c: (_group_rank(c["group"]), c["id"]))
@@ -24,11 +50,12 @@ def assemble(projects: list, snapshot: dict, now: datetime) -> dict:
     else:
         stale, reason = False, ""
 
-    # datetime is not JSON-serialisable and measures carry them; the panel
-    # only ever reads `state` and `why`, so drop them at the boundary.
+    # datetime is not JSON-serialisable and measures/detail may carry them;
+    # the panel only ever reads `state` and `why`, so drop them at the boundary.
     for cell in cells:
-        cell["measures"] = {k: v for k, v in cell["measures"].items()
-                            if not isinstance(v, datetime)}
+        cell["measures"] = _remove_datetimes(cell["measures"])
+        if "detail" in cell:
+            cell["detail"] = _remove_datetimes(cell["detail"])
 
     return {"generated_at": now.isoformat(timespec="seconds"), "stale": stale,
             "stale_reason": reason, "groups": GROUP_ORDER, "cells": cells}
