@@ -75,7 +75,8 @@ def due_today(ctx: Context) -> Section:
     else:
         brief = "Nothing due today."
     if late:
-        brief += f" {number(len(late)).capitalize()} overdue."
+        # Wording: operator, 2026-10-01 ("_ tasks overdue").
+        brief += f" {number(len(late)).capitalize()} {'task' if len(late) == 1 else 'tasks'} overdue."
     parts = []
     if today:
         parts.append("Due today: " + "; ".join(f"{_title(t)} ({t.get('project') or 'no project'})" for t in today) + ".")

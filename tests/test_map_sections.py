@@ -25,7 +25,7 @@ def test_listing_caps_and_counts():
 def test_due_today_brief_and_verbose():
     s = due_today(ctx(tasks=[task("Call WorkSource", "2026-10-01"), task("UIB claim", "2026-10-01", project="uib"),
                              task("Old thing", "2026-09-28"), task("Done thing", "2026-10-01", status="done")]))
-    assert s.brief == "Two things due today: Call WorkSource and UIB claim. One overdue."
+    assert s.brief == "Two things due today: Call WorkSource and UIB claim. One task overdue."
     assert "Overdue: one. Most recently due: Old thing (due 2026-09-28)." in s.verbose
     assert "Done thing" not in s.verbose
 
@@ -34,7 +34,7 @@ def test_verbose_caps_overdue_to_the_most_recently_due():
     # First real-data run read all 51 overdue tasks aloud: brief-first applies inside verbose too.
     late = [task(f"T{i}", f"2026-09-{10 + i:02d}") for i in range(8)]
     s = due_today(ctx(tasks=late, verbose_cap=3))
-    assert s.brief == "Nothing due today. Eight overdue."
+    assert s.brief == "Nothing due today. Eight tasks overdue."
     assert "Overdue: eight. Most recently due: T7 (due 2026-09-17); T6 (due 2026-09-16); T5 (due 2026-09-15); and 5 more." in s.verbose
 
 
@@ -98,7 +98,7 @@ def test_a_task_without_a_title_is_named_not_fatal():
 
 def test_counts_past_nine_are_digits():
     late = [task(f"T{i}", "2026-09-01") for i in range(12)]
-    assert due_today(ctx(tasks=late)).brief == "Nothing due today. 12 overdue."
+    assert due_today(ctx(tasks=late)).brief == "Nothing due today. 12 tasks overdue."
 
 
 def test_an_offset_aware_surfaced_time_drops_the_age_not_the_section():
@@ -123,7 +123,7 @@ def test_a_worker_error_is_short_in_brief_and_bounded_in_verbose():
 def test_waiting_tasks_are_not_overdue():
     # Operator, 2026-10-01: "Tasks in waiting should not count as overdue."
     s = due_today(ctx(tasks=[task("Blocked on Fritz", "2026-09-20", status="waiting"), task("Mine", "2026-09-20")]))
-    assert s.brief == "Nothing due today. One overdue."
+    assert s.brief == "Nothing due today. One task overdue."
     assert "Blocked on Fritz" not in s.verbose
 
 
