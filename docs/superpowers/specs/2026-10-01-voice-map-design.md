@@ -143,6 +143,14 @@ Lists in a brief name at most `brief_list_cap` items, then "and N more."
 - **`/api/surfaced`:** a webhook test against a temporary `state.json`.
 - **Phone:** on the A16: speaks, barge-in, cache age-first (stop the cockpit and ask), and the side-button hold.
 
+## Remediation on contact (standing rule for this build)
+
+Operator, 2026-10-01: *"If there is anything we can simplify, generalize, or blast-radius contain while we are working on coding, Id like to investigate each instance for remediation at the time, or creation of a follow-up task."*
+
+Every such instance found while implementing is examined then and resolved as **fixed now** (inside code this build already touches, small, with a test) or **a follow-up task** (vault task with reason and trigger). Each is ledgered as `Remediation: <what> — fixed (<commit>) | task [[…]]` and reported at the end.
+
+**Known at spec time:** the State Map's dev time-zone skew (`cockpit.py` comment: the dev container runs UTC while `machine.json` is written in Pacific time, skewing staleness by the UTC offset). `/api/map`'s `systems` section reads the same snapshot, so this is the first instance to examine.
+
 ## Generalization (seams now, feature later)
 
 - No Marlin names in section code; sections read LMF vault conventions (task frontmatter).
