@@ -14,6 +14,11 @@ from datetime import date, datetime
 
 from statemap.assemble import assemble
 from statemap.work import attach_overdue
+from statemap.machine import SNAPSHOT_STALE_AFTER, machine_cells, snapshot_age
+from statemap.map_assemble import build_map
+from statemap.map_config import read_sections
+from statemap.map_sections import Context
+from urllib.parse import parse_qs
 
 mimetypes.add_type("text/javascript", ".jsx")
 
@@ -109,16 +114,11 @@ def _state_map_payload():
     except (OSError, ValueError):
         snapshot = {}
 
-    # TZ gap: cockpit-dev in ~/git/docker-compose.yml sets no TZ env var, so
-    # datetime.now() here returns UTC in that container while machine.json's
-    # generated_at (written host-local by statemap/collect.py) stays PDT/PST.
-    # That skews every staleness comparison in statemap/machine.py by the UTC
-    # offset -- reproduced empirically in task-6-report.md (a ~16-minute-old
-    # snapshot measured as ~7 hours old). Prod's `cockpit` service sets
-    # TZ=America/Los_Angeles and is unaffected. This is a cheap note, not a
-    # fix: the durable fix is UTC end-to-end across collect.py, machine.py,
-    # and this endpoint, which touches three already-closed modules and is
-    # deferred to the whole-branch review.
+    # Times here are naive local time, and so is machine.json's generated_at
+    # (statemap/collect.py). That holds only while the cockpit runs in the
+    # operator's zone: dev :9110 is a host process, and both compose services
+    # set TZ=America/Los_Angeles. A container without TZ would run UTC and
+    # skew staleness (and /api/map's "today") by the UTC offset.
     payload = assemble(projects, snapshot, datetime.now())
     if unreachable:
         payload["stale"] = True
@@ -129,13 +129,70 @@ def _state_map_payload():
     return payload
 
 
-def _fetch_json(url):
+# --- Map: the State Map's content, spoken first (spec 2026-10-01-voice-map-design.md) ---
+MAP_SECTIONS_FILE = VAULT / "System" / "StateMap" / "map-sections.yaml"
+MARLIN_STATE_URL = os.environ.get("MARLIN_STATE_URL", "http://marlin:7832/api/state")
+# The voice base is optional: unset means the map doesn't report on it.
+VOICE_BASE_URL = os.environ.get("VOICE_BASE_URL", "").rstrip("/")
+VOICE_BASE_TOKEN_FILE = os.environ.get("VOICE_BASE_TOKEN_FILE", "")
+MAP_CACHE_TTL = 30  # seconds, as for /api/state-map
+_map_cache: dict = {}
+
+
+def _voice_status():
+    """{"up", "lapsed", "worker_error"} from the voice base, or None when it isn't configured."""
+    if not VOICE_BASE_URL:
+        return None
+    health = _fetch_json(f"{VOICE_BASE_URL}/health")
+    if not health or health.get("status") != "ok":
+        return {"up": False}
+    try:
+        token = Path(VOICE_BASE_TOKEN_FILE).read_text(encoding="utf-8").strip()
+    except OSError:
+        return {"up": True, "error": "the cockpit can't read its token"}
+    since = int(time.time() * 1000) - 15 * 60 * 1000
+    gaps = _fetch_json(f"{VOICE_BASE_URL}/liveness/gaps?since_ms={since}&threshold_ms=300000", token)
+    status = _fetch_json(f"{VOICE_BASE_URL}/status", token)
+    return {"up": True, "lapsed": bool(gaps and gaps.get("lapsed")),
+            "worker_error": ((status or {}).get("worker") or {}).get("last_error")}
+
+
+def _map_payload(detail: str) -> dict:
+    """The map, assembled from shared sources. Never raises: each source's failure is spoken by its section."""
+    cached = _map_cache.get(detail)
+    if cached and time.time() - cached[0] < MAP_CACHE_TTL:
+        return cached[1]
+    now = datetime.now()
+    names, cap, verbose_cap, problems = read_sections(MAP_SECTIONS_FILE)
+    tasks_raw = _fetch_json(MARLIN_TASKS_URL)
+    try:
+        snapshot = json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        snapshot = None
+    machine, stale = None, ""
+    if snapshot is not None:
+        machine = machine_cells(snapshot, now)
+        age = snapshot_age(snapshot, now)
+        if age is not None and age > SNAPSHOT_STALE_AFTER.total_seconds():
+            stale = f"{int(age // 60)} minutes old"
+    ctx = Context(today=date.today(), now=now,
+                  tasks=None if tasks_raw is None else tasks_raw.get("tasks", []),
+                  state=_fetch_json(MARLIN_STATE_URL), machine=machine, machine_stale=stale,
+                  voice=_voice_status(), cap=cap, verbose_cap=verbose_cap, problems=problems)
+    payload = build_map(names, ctx, detail, now.isoformat(timespec="seconds"))
+    _map_cache[detail] = (time.time(), payload)
+    return payload
+
+
+def _fetch_json(url, token=None):
     """GET JSON, or None on any failure. Never raises: one unreachable
     upstream must degrade a half of the map, not blank the whole panel.
     None means failure; a genuine empty response ([] or {}) is success and
-    must stay distinguishable from the upstream being down."""
+    must stay distinguishable from the upstream being down. `token`, when
+    given, is sent as a bearer token (the voice base needs one)."""
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=5) as resp:
             return json.loads(resp.read())
     except (urllib.error.URLError, OSError, ValueError):
         return None
@@ -242,6 +299,13 @@ class CockpitHandler(BaseHTTPRequestHandler):
         if rel == "api/vault/context":
             ctx = vault_context()
             code, ctype, body = _json(ctx)
+            self._respond(code, body, ctype)
+            return
+
+        if rel == "api/map":
+            query = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+            detail = "verbose" if query.get("detail", ["brief"])[0] == "verbose" else "brief"
+            code, ctype, body = _json(_map_payload(detail))
             self._respond(code, body, ctype)
             return
 
