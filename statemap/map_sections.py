@@ -85,7 +85,8 @@ def due_today(ctx: Context) -> Section:
     if late:
         # Brief-first inside verbose too: the count, then the most recently due few.
         recent = sorted(late, key=lambda t: str(t.get("goal_date")), reverse=True)
-        shown = "; ".join(f"{_title(t)} (due {t['goal_date']})" for t in recent[:ctx.verbose_cap])
+        # Numbered, so a listener can keep their place (operator, 2026-10-01).
+        shown = "; ".join(f"{i}: {_title(t)} (due {t['goal_date']})" for i, t in enumerate(recent[:ctx.verbose_cap], 1))
         more = f"; and {len(recent) - ctx.verbose_cap} more" if len(recent) > ctx.verbose_cap else ""
         parts.append(f"Overdue: {number(len(late))}. Most recently due: {shown}{more}.")
     return Section("due_today", brief, " ".join(parts))

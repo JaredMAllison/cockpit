@@ -26,7 +26,7 @@ def test_due_today_brief_and_verbose():
     s = due_today(ctx(tasks=[task("Call WorkSource", "2026-10-01"), task("UIB claim", "2026-10-01", project="uib"),
                              task("Old thing", "2026-09-28"), task("Done thing", "2026-10-01", status="done")]))
     assert s.brief == "Two things due today: Call WorkSource and UIB claim. One task overdue."
-    assert "Overdue: one. Most recently due: Old thing (due 2026-09-28)." in s.verbose
+    assert "Overdue: one. Most recently due: 1: Old thing (due 2026-09-28)." in s.verbose
     assert "Done thing" not in s.verbose
 
 
@@ -35,7 +35,7 @@ def test_verbose_caps_overdue_to_the_most_recently_due():
     late = [task(f"T{i}", f"2026-09-{10 + i:02d}") for i in range(8)]
     s = due_today(ctx(tasks=late, verbose_cap=3))
     assert s.brief == "Nothing due today. Eight tasks overdue."
-    assert "Overdue: eight. Most recently due: T7 (due 2026-09-17); T6 (due 2026-09-16); T5 (due 2026-09-15); and 5 more." in s.verbose
+    assert "Overdue: eight. Most recently due: 1: T7 (due 2026-09-17); 2: T6 (due 2026-09-16); 3: T5 (due 2026-09-15); and 5 more." in s.verbose
 
 
 def test_due_today_ignores_tasks_not_yet_available():
