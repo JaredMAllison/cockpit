@@ -42,3 +42,11 @@ def test_one_broken_section_does_not_blank_the_map(monkeypatch):
 def test_verbose_uses_the_long_form():
     m = build_map(["calendar"], ctx(), "verbose", "t")
     assert m["text"] == "No calendar yet."
+
+
+def test_building_twice_from_one_context_says_the_same_thing():
+    # Brief and verbose are built from one fetch; the second build must not repeat config problems.
+    c = ctx()
+    first = build_map(["due_tody", "systems"], c, "brief", "t")
+    second = build_map(["due_tody", "systems"], c, "brief", "t")
+    assert first["text"] == second["text"] == "Map: unknown section 'due_tody'."

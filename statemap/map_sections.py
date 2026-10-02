@@ -9,6 +9,7 @@ from datetime import date, datetime
 from typing import Callable, Optional
 
 CLOSED = {"done", "cancelled", "mothballed"}
+NOT_OVERDUE = {"waiting"}  # blocked on someone else (operator, 2026-10-01)
 NUMBERS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
 
 
@@ -64,7 +65,8 @@ def due_today(ctx: Context) -> Section:
     open_ = [t for t in ctx.tasks if str(t.get("status", "")).lower() not in CLOSED
              and (_due(t.get("available_from")) or ctx.today) <= ctx.today]
     today = [t for t in open_ if _due(t.get("goal_date")) == ctx.today]
-    late = [t for t in open_ if (_due(t.get("goal_date")) or ctx.today) < ctx.today]
+    late = [t for t in open_ if (_due(t.get("goal_date")) or ctx.today) < ctx.today
+            and str(t.get("status", "")).lower() not in NOT_OVERDUE]
     titles = [_title(t) for t in today]
     if titles:
         thing = "thing" if len(titles) == 1 else "things"
@@ -117,6 +119,8 @@ def calendar(ctx: Context) -> Section:
 
 
 def systems(ctx: Context) -> Section:
+    # Ranking: the first problem found leads the brief, so the checks run worst-first:
+    # the voice base (capture itself), then failing services, then the snapshot, then config.
     problems = []   # spoken in full by verbose; the first one leads the brief
     brief_first = None  # a shorter brief for the first problem, when its full text is long
     v = ctx.voice

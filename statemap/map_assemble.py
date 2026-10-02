@@ -1,11 +1,13 @@
 """Build the map: the operator's sections, in order, as text (spec 2026-10-01)."""
+from dataclasses import replace
+
 from .map_sections import SECTIONS, Context
 
 
 def build_map(names: list, ctx: Context, detail: str, generated_at: str) -> dict:
     """Unknown names are skipped and reported by `systems`. One failing section never blanks the rest."""
     known = [n for n in names if n in SECTIONS]
-    ctx.problems = ctx.problems + [f"map: unknown section '{n}'" for n in names if n not in SECTIONS]
+    ctx = replace(ctx, problems=ctx.problems + [f"map: unknown section '{n}'" for n in names if n not in SECTIONS])
     out = []
     for name in known:
         try:

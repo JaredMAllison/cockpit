@@ -24,6 +24,8 @@ def read_sections(path: Path):
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
         return list(DEFAULT_SECTIONS), DEFAULT_CAP, DEFAULT_VERBOSE_CAP, ["map sections file missing; using the default list"]
+    except ValueError:  # not UTF-8
+        return list(DEFAULT_SECTIONS), DEFAULT_CAP, DEFAULT_VERBOSE_CAP, ["map sections file unreadable; using the default list"]
     names, cap, vcap, problems, in_list = [], DEFAULT_CAP, DEFAULT_VERBOSE_CAP, [], False
     for n, raw in enumerate(text.splitlines(), 1):
         line = raw.split("#", 1)[0].rstrip()
@@ -32,7 +34,11 @@ def read_sections(path: Path):
         if line.strip() == "sections:":
             in_list = True
         elif in_list and line.lstrip().startswith("- "):
-            names.append(line.lstrip()[2:].strip())
+            name = line.lstrip()[2:].strip().strip("\"'")
+            if name in names:
+                problems.append(f"map sections file line {n}: {name} is listed twice")
+            else:
+                names.append(name)
         elif line.startswith(("brief_list_cap:", "verbose_list_cap:")):
             in_list = False
             key, value = (part.strip() for part in line.split(":", 1))

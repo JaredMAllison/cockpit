@@ -28,3 +28,16 @@ def test_lines_it_cannot_read_are_reported_not_ignored(tmp_path):
 def test_an_empty_list_falls_back(tmp_path):
     names, _, _, problems = read_sections(write(tmp_path, "sections:\n"))
     assert names == DEFAULT_SECTIONS and problems
+
+
+def test_a_file_that_isnt_utf8_falls_back_and_says_so(tmp_path):
+    p = tmp_path / "map-sections.yaml"
+    p.write_bytes(b"sections:\n  - due_\xff\n")
+    names, _, _, problems = read_sections(p)
+    assert names == DEFAULT_SECTIONS and problems == ["map sections file unreadable; using the default list"]
+
+
+def test_quotes_are_accepted_and_duplicates_reported(tmp_path):
+    names, _, _, problems = read_sections(write(tmp_path, 'sections:\n  - "due_today"\n  - \'systems\'\n  - systems\n'))
+    assert names == ["due_today", "systems"]
+    assert problems == ["map sections file line 4: systems is listed twice"]

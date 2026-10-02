@@ -118,3 +118,10 @@ def test_a_worker_error_is_short_in_brief_and_bounded_in_verbose():
     assert s.brief == "Transcription is failing."
     assert "Traceback" not in s.verbose and "/home/secret" not in s.verbose
     assert s.verbose.startswith("Transcription is failing: RuntimeError: x") and len(s.verbose) < 120
+
+
+def test_waiting_tasks_are_not_overdue():
+    # Operator, 2026-10-01: "Tasks in waiting should not count as overdue."
+    s = due_today(ctx(tasks=[task("Blocked on Fritz", "2026-09-20", status="waiting"), task("Mine", "2026-09-20")]))
+    assert s.brief == "Nothing due today. One overdue."
+    assert "Blocked on Fritz" not in s.verbose

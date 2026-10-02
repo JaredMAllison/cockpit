@@ -91,7 +91,7 @@ class Section:
 | id | brief | verbose | source |
 |---|---|---|---|
 | *(phone)* | "You're home, Passive is on." | + mic, and since when | phone, live |
-| `due_today` | "Two things due today: A and B." / "Nothing due today." (+ "and one overdue") | each item with its project; overdue items listed | tasks: `goal_date` ≤ today, status not `done`/`cancelled`/`mothballed`, `available_from` ≤ today |
+| `due_today` | "Two things due today: A and B." / "Nothing due today." (+ "and one overdue") | each item with its project; overdue items listed | tasks: `goal_date` ≤ today, status not `done`/`cancelled`/`mothballed`, `available_from` ≤ today; **`waiting` is never overdue** (operator, 2026-10-01: *"Tasks in waiting should not count as overdue."*) |
 | `next_up` | "Next up: call WorkSource." / "Nothing surfaced." | + project, duration, surfaced how long ago | `/api/surfaced` |
 | `calendar` | "" (silent) | "No calendar yet." | empty slot until the Marlin Calendar |
 | `systems` | "Systems fine." / the single worst problem ("The base is down since 9:14.") | each service, sync backlog, kept-aside segments, last backup age, any unknown section names | machine snapshot, voice base `/status` and `/liveness/gaps` |
@@ -164,5 +164,5 @@ Every such instance found while implementing is examined then and resolved as **
 
 ## Open
 
-- The exact `systems` "worst problem" ranking (base down > sync backlog > kept aside > backup age is the starting order).
+- ~~The exact `systems` "worst problem" ranking~~ **Settled in code (2026-10-01):** checks run worst-first, and the first problem leads the brief: the voice base, then failing services, then the snapshot, then config problems. Sync backlog and kept-aside moved to the phone's live line.
 - Whether `elaborate` should also work as a standalone Quickhack later ("elaborate" after any brief answer).

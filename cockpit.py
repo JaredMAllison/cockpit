@@ -143,51 +143,76 @@ def _voice_status():
     """{"up", "lapsed", "worker_error"} from the voice base, or None when it isn't configured."""
     if not VOICE_BASE_URL:
         return None
-    health = _fetch_json(f"{VOICE_BASE_URL}/health")
+    health = _dict_or_none(_fetch_json(f"{VOICE_BASE_URL}/health"))
     if not health or health.get("status") != "ok":
         return {"up": False}
     try:
         token = Path(VOICE_BASE_TOKEN_FILE).read_text(encoding="utf-8").strip()
-    except OSError:
+    except (OSError, ValueError):  # missing, a directory, or not UTF-8
         token = ""
     if not token:
         return {"up": True, "error": "the cockpit can't read its token"}
     since = int(time.time() * 1000) - 15 * 60 * 1000
-    gaps = _fetch_json(f"{VOICE_BASE_URL}/liveness/gaps?since_ms={since}&threshold_ms=300000", token)
-    status = _fetch_json(f"{VOICE_BASE_URL}/status", token)
+    gaps = _dict_or_none(_fetch_json(f"{VOICE_BASE_URL}/liveness/gaps?since_ms={since}&threshold_ms=300000", token))
+    status = _dict_or_none(_fetch_json(f"{VOICE_BASE_URL}/status", token))
     if gaps is None or status is None:
         # Up, but refusing or failing the token-gated checks (e.g. a rotated token):
         # the checks can't run, so the map must not report the base as fine.
         return {"up": True, "error": "it isn't answering the cockpit's checks"}
-    return {"up": True, "lapsed": bool(gaps.get("lapsed")),
-            "worker_error": ((status or {}).get("worker") or {}).get("last_error")}
+    worker = _dict_or_none(status.get("worker")) or {}
+    return {"up": True, "lapsed": bool(gaps.get("lapsed")), "worker_error": worker.get("last_error")}
 
 
-def _map_payload(detail: str) -> dict:
-    """The map, assembled from shared sources. Never raises: each source's failure is spoken by its section."""
-    cached = _map_cache.get(detail)
-    if cached and time.time() - cached[0] < MAP_CACHE_TTL:
-        return cached[1]
-    now = datetime.now()
+def _dict_or_none(value):
+    """Upstream JSON that isn't an object is treated as the upstream failing."""
+    return value if isinstance(value, dict) else None
+
+
+def _map_sources(now: datetime) -> tuple:
+    """Fetch every source once: (names, Context). Each failure becomes a None its section speaks."""
     names, cap, verbose_cap, problems = read_sections(MAP_SECTIONS_FILE)
-    tasks_raw = _fetch_json(MARLIN_TASKS_URL)
+    tasks_raw = _dict_or_none(_fetch_json(MARLIN_TASKS_URL))
+    tasks = tasks_raw.get("tasks") if tasks_raw else None
     try:
-        snapshot = json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8"))
+        snapshot = _dict_or_none(json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8")))
     except (OSError, ValueError):
         snapshot = None
     machine, stale = None, ""
     if snapshot is not None:
-        machine = machine_cells(snapshot, now)
-        age = snapshot_age(snapshot, now)
+        try:
+            machine = machine_cells(snapshot, now)
+            age = snapshot_age(snapshot, now)
+        except Exception:  # a malformed snapshot is "no snapshot", not a dead map
+            machine, age = None, None
         if age is not None and age > SNAPSHOT_STALE_AFTER.total_seconds():
             stale = f"{int(age // 60)} minutes old"
-    ctx = Context(today=date.today(), now=now,
-                  tasks=None if tasks_raw is None else tasks_raw.get("tasks", []),
-                  state=_fetch_json(MARLIN_STATE_URL), machine=machine, machine_stale=stale,
+    ctx = Context(today=now.date(), now=now, tasks=tasks if isinstance(tasks, list) else None,
+                  state=_dict_or_none(_fetch_json(MARLIN_STATE_URL)), machine=machine, machine_stale=stale,
                   voice=_voice_status(), cap=cap, verbose_cap=verbose_cap, problems=problems)
-    payload = build_map(names, ctx, detail, now.isoformat(timespec="seconds"))
-    _map_cache[detail] = (time.time(), payload)
-    return payload
+    return names, ctx
+
+
+def _map_payload(detail: str) -> dict:
+    """The map. Never raises. Brief and verbose are built from one fetch and cached
+    together, so "elaborate" narrates the same data as the brief it follows."""
+    cached = _map_cache.get("both")
+    if cached and time.time() - cached[0] < MAP_CACHE_TTL:
+        return cached[1][detail]
+    now = datetime.now()
+    generated_at = now.astimezone().isoformat(timespec="seconds")
+    try:
+        names, ctx = _map_sources(now)
+        both = {d: build_map(names, ctx, d, generated_at) for d in ("brief", "verbose")}
+    except Exception as e:  # last resort: still say something, and don't cache it
+        text = f"The map couldn't be built ({type(e).__name__})."
+        return {"generated_at": generated_at, "detail": detail, "sections": [], "text": text}
+    _map_cache["both"] = (time.time(), both)
+    return both[detail]
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # urllib then raises HTTPError, which _fetch_json turns into None
 
 
 def _fetch_json(url, token=None):
@@ -197,8 +222,10 @@ def _fetch_json(url, token=None):
     must stay distinguishable from the upstream being down. `token`, when
     given, is sent as a bearer token (the voice base needs one)."""
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    # With a token, redirects are refused: urllib would carry the Authorization header to the new host.
+    opener = urllib.request.build_opener(_NoRedirect) if token else urllib.request.build_opener()
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=5) as resp:
+        with opener.open(urllib.request.Request(url, headers=headers), timeout=5) as resp:
             return json.loads(resp.read())
     except (urllib.error.URLError, OSError, ValueError):
         return None
