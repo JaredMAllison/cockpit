@@ -109,3 +109,12 @@ def test_an_offset_aware_surfaced_time_drops_the_age_not_the_section():
 def test_a_voice_base_error_is_spoken():
     s = systems(ctx(voice={"up": True, "error": "the cockpit can't read its token"}))
     assert s.brief == "Voice base: the cockpit can't read its token."
+
+
+def test_a_worker_error_is_short_in_brief_and_bounded_in_verbose():
+    # Final review I2: upstream error text is spoken aloud; the brief stays brief, verbose gets one bounded line.
+    err = "RuntimeError: " + "x" * 200 + "\nTraceback (most recent call last): /home/secret/path.py"
+    s = systems(ctx(voice={"up": True, "worker_error": err}))
+    assert s.brief == "Transcription is failing."
+    assert "Traceback" not in s.verbose and "/home/secret" not in s.verbose
+    assert s.verbose.startswith("Transcription is failing: RuntimeError: x") and len(s.verbose) < 120

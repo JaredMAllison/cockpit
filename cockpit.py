@@ -149,11 +149,17 @@ def _voice_status():
     try:
         token = Path(VOICE_BASE_TOKEN_FILE).read_text(encoding="utf-8").strip()
     except OSError:
+        token = ""
+    if not token:
         return {"up": True, "error": "the cockpit can't read its token"}
     since = int(time.time() * 1000) - 15 * 60 * 1000
     gaps = _fetch_json(f"{VOICE_BASE_URL}/liveness/gaps?since_ms={since}&threshold_ms=300000", token)
     status = _fetch_json(f"{VOICE_BASE_URL}/status", token)
-    return {"up": True, "lapsed": bool(gaps and gaps.get("lapsed")),
+    if gaps is None or status is None:
+        # Up, but refusing or failing the token-gated checks (e.g. a rotated token):
+        # the checks can't run, so the map must not report the base as fine.
+        return {"up": True, "error": "it isn't answering the cockpit's checks"}
+    return {"up": True, "lapsed": bool(gaps.get("lapsed")),
             "worker_error": ((status or {}).get("worker") or {}).get("last_error")}
 
 

@@ -117,7 +117,8 @@ def calendar(ctx: Context) -> Section:
 
 
 def systems(ctx: Context) -> Section:
-    problems = []
+    problems = []   # spoken in full by verbose; the first one leads the brief
+    brief_first = None  # a shorter brief for the first problem, when its full text is long
     v = ctx.voice
     if v is not None:
         if not v.get("up"):
@@ -128,7 +129,11 @@ def systems(ctx: Context) -> Section:
             if v.get("lapsed"):
                 problems.append("The phone agent has gone quiet.")
             if v.get("worker_error"):
-                problems.append(f"Transcription is failing: {v['worker_error']}.")
+                # Upstream text spoken aloud: one line, bounded; the brief names only the fact.
+                line = str(v["worker_error"]).splitlines()[0][:80] if str(v["worker_error"]).strip() else "unknown error"
+                if not problems:
+                    brief_first = "Transcription is failing."
+                problems.append(f"Transcription is failing: {line}.")
     for cell in ctx.machine or []:
         if cell.get("state") == "degraded":
             problems.append(f"{cell.get('label', cell.get('id'))}: {cell.get('why', 'failing')}.")
@@ -140,7 +145,7 @@ def systems(ctx: Context) -> Section:
     if not problems:
         notes = [f"{c.get('label', c.get('id'))}: {c.get('why')}." for c in ctx.machine or [] if c.get("state") == "needs-you"]
         return Section("systems", "Systems fine.", "All systems fine." + (" " + " ".join(notes) if notes else ""))
-    brief = problems[0] + (f" And {number(len(problems) - 1)} more." if len(problems) > 1 else "")
+    brief = (brief_first or problems[0]) + (f" And {number(len(problems) - 1)} more." if len(problems) > 1 else "")
     return Section("systems", brief, " ".join(problems))
 
 

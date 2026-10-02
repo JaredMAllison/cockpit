@@ -61,3 +61,17 @@ def test_an_unreadable_voice_token_is_spoken(server, tmp_path, monkeypatch):
     monkeypatch.setattr(cockpit, "_fetch_json", lambda url, token=None: {"status": "ok"} if url == "http://voice/health" else real(url, token))
     cockpit.MAP_SECTIONS_FILE.write_text("sections:\n  - systems\n")
     assert "Voice base: the cockpit can't read its token." in get(server + "/api/map?detail=verbose")["text"]
+
+
+def test_a_rejected_or_empty_token_is_not_spoken_as_fine(server, tmp_path, monkeypatch):
+    # Final review I1: an empty token, or a base that refuses the cockpit's token, must not read as "Systems fine."
+    token = tmp_path / "token"
+    monkeypatch.setattr(cockpit, "VOICE_BASE_URL", "http://voice")
+    monkeypatch.setattr(cockpit, "VOICE_BASE_TOKEN_FILE", str(token))
+    monkeypatch.setattr(cockpit, "_fetch_json", lambda url, token=None: {"status": "ok"} if url == "http://voice/health" else None)
+    cockpit.MAP_SECTIONS_FILE.write_text("sections:\n  - systems\n")
+    token.write_text("\n")
+    assert "Voice base: the cockpit can't read its token." in get(server + "/api/map?detail=verbose")["text"]
+    cockpit._map_cache.clear()
+    token.write_text("rotated-elsewhere\n")
+    assert "Voice base: it isn't answering the cockpit's checks." in get(server + "/api/map?detail=verbose")["text"]
