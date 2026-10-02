@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-01 — Map (`/api/map`)
+
+- `GET /api/map?detail=brief|verbose`: the day as short spoken-ready text (due today with the overdue count, next up, a calendar slot, systems), for the wearable's `map` Quickhack and other renderings
+- Sections and their order come from the vault's `System/StateMap/map-sections.yaml`; unknown names and unreadable lines are spoken, not dropped
+- Sources fetched once per request and cached 30 s; a failed source costs its sentence, never the map
+- `_fetch_json` takes an optional bearer token (voice base)
+
 ## 2026-05-08 — InkBlotter + deployment polish
 
 - InkBlotter panel: multi-tool creative surface (sketch, notes, docs, diagrams) with vault write API
