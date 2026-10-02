@@ -104,9 +104,9 @@ Lists in a brief name at most `brief_list_cap` items, then "and N more."
 - **`next_up` gets its project from `/api/state`'s existing data**, and **no `/api/surfaced` route is added:** the webhook already serves `last_surfaced_task` and `last_surfaced_at` at `/api/state`, so the spec's new route was unnecessary (remediation on contact: simplified).
 - **Host `systems` covers the host only.** The sync backlog and kept-aside counts live on the phone, so the phone's live line reports them (phone plan).
 
-### `/api/surfaced` (Marlin webhook, new)
+### ~~`/api/surfaced`~~ (dropped)
 
-`GET /api/surfaced` → `{"title": str|null, "project": str|null, "surfaced_at": str|null}`, read from `state.json` the way `dashboard_page()` already does. It is read-only and small, in the webhook because the webhook owns `state.json`.
+Superseded 2026-10-01: Marlin's webhook already serves `last_surfaced_task` and `last_surfaced_at` at `/api/state`. No webhook change is needed; `~/marlin` is untouched.
 
 ### `/api/map`
 
@@ -146,7 +146,6 @@ Lists in a brief name at most `brief_list_cap` items, then "and N more."
 - **Section file:** order respected, unknown name reported, missing file falls back.
 - **Route:** `/api/map` brief and verbose, with sources stubbed at the HTTP boundary (the same pattern as the existing `/api/state-map` tests).
 - **Wording:** snapshot tests on `text`, so wording changes are deliberate.
-- **`/api/surfaced`:** a webhook test against a temporary `state.json`.
 - **Phone:** on the A16: speaks, barge-in, cache age-first (stop the cockpit and ask), and the side-button hold.
 
 ## Remediation on contact (standing rule for this build)
