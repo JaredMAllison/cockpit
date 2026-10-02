@@ -14,6 +14,11 @@ from datetime import date, datetime
 
 from statemap.assemble import assemble
 from statemap.work import attach_overdue
+from statemap.machine import SNAPSHOT_STALE_AFTER, machine_cells, snapshot_age
+from statemap.map_assemble import build_map
+from statemap.map_config import read_sections
+from statemap.map_sections import Context
+from urllib.parse import parse_qs
 
 mimetypes.add_type("text/javascript", ".jsx")
 
@@ -109,16 +114,11 @@ def _state_map_payload():
     except (OSError, ValueError):
         snapshot = {}
 
-    # TZ gap: cockpit-dev in ~/git/docker-compose.yml sets no TZ env var, so
-    # datetime.now() here returns UTC in that container while machine.json's
-    # generated_at (written host-local by statemap/collect.py) stays PDT/PST.
-    # That skews every staleness comparison in statemap/machine.py by the UTC
-    # offset -- reproduced empirically in task-6-report.md (a ~16-minute-old
-    # snapshot measured as ~7 hours old). Prod's `cockpit` service sets
-    # TZ=America/Los_Angeles and is unaffected. This is a cheap note, not a
-    # fix: the durable fix is UTC end-to-end across collect.py, machine.py,
-    # and this endpoint, which touches three already-closed modules and is
-    # deferred to the whole-branch review.
+    # Times here are naive local time, and so is machine.json's generated_at
+    # (statemap/collect.py). That holds only while the cockpit runs in the
+    # operator's zone: dev :9110 is a host process, and both compose services
+    # set TZ=America/Los_Angeles. A container without TZ would run UTC and
+    # skew staleness (and /api/map's "today") by the UTC offset.
     payload = assemble(projects, snapshot, datetime.now())
     if unreachable:
         payload["stale"] = True
@@ -129,13 +129,104 @@ def _state_map_payload():
     return payload
 
 
-def _fetch_json(url):
+# --- Map: the State Map's content, spoken first (spec 2026-10-01-voice-map-design.md) ---
+MAP_SECTIONS_FILE = VAULT / "System" / "StateMap" / "map-sections.yaml"
+MARLIN_STATE_URL = os.environ.get("MARLIN_STATE_URL", "http://marlin:7832/api/state")
+# The voice base is optional: unset means the map doesn't report on it.
+VOICE_BASE_URL = os.environ.get("VOICE_BASE_URL", "").rstrip("/")
+VOICE_BASE_TOKEN_FILE = os.environ.get("VOICE_BASE_TOKEN_FILE", "")
+MAP_CACHE_TTL = 30  # seconds, as for /api/state-map
+_map_cache: dict = {}
+
+
+def _voice_status():
+    """{"up", "lapsed", "worker_error"} from the voice base, or None when it isn't configured."""
+    if not VOICE_BASE_URL:
+        return None
+    health = _dict_or_none(_fetch_json(f"{VOICE_BASE_URL}/health"))
+    if not health or health.get("status") != "ok":
+        return {"up": False}
+    try:
+        token = Path(VOICE_BASE_TOKEN_FILE).read_text(encoding="utf-8").strip()
+    except (OSError, ValueError):  # missing, a directory, or not UTF-8
+        token = ""
+    if not token:
+        return {"up": True, "error": "the cockpit can't read its token"}
+    since = int(time.time() * 1000) - 15 * 60 * 1000
+    gaps = _dict_or_none(_fetch_json(f"{VOICE_BASE_URL}/liveness/gaps?since_ms={since}&threshold_ms=300000", token))
+    status = _dict_or_none(_fetch_json(f"{VOICE_BASE_URL}/status", token))
+    if gaps is None or status is None:
+        # Up, but refusing or failing the token-gated checks (e.g. a rotated token):
+        # the checks can't run, so the map must not report the base as fine.
+        return {"up": True, "error": "it isn't answering the cockpit's checks"}
+    worker = _dict_or_none(status.get("worker")) or {}
+    return {"up": True, "lapsed": bool(gaps.get("lapsed")), "worker_error": worker.get("last_error")}
+
+
+def _dict_or_none(value):
+    """Upstream JSON that isn't an object is treated as the upstream failing."""
+    return value if isinstance(value, dict) else None
+
+
+def _map_sources(now: datetime) -> tuple:
+    """Fetch every source once: (names, Context). Each failure becomes a None its section speaks."""
+    cfg = read_sections(MAP_SECTIONS_FILE)
+    tasks_raw = _dict_or_none(_fetch_json(MARLIN_TASKS_URL))
+    tasks = tasks_raw.get("tasks") if tasks_raw else None
+    try:
+        snapshot = _dict_or_none(json.loads(STATEMAP_SNAPSHOT.read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        snapshot = None
+    machine, stale = None, ""
+    if snapshot is not None:
+        try:
+            machine = machine_cells(snapshot, now)
+            age = snapshot_age(snapshot, now)
+        except Exception:  # a malformed snapshot is "no snapshot", not a dead map
+            machine, age = None, None
+        if age is not None and age > SNAPSHOT_STALE_AFTER.total_seconds():
+            stale = f"{int(age // 60)} minutes old"
+    ctx = Context(today=now.date(), now=now, tasks=tasks if isinstance(tasks, list) else None,
+                  state=_dict_or_none(_fetch_json(MARLIN_STATE_URL)), machine=machine, machine_stale=stale,
+                  voice=_voice_status(), cap=cfg.brief_cap, verbose_cap=cfg.verbose_cap,
+                  expected_off=cfg.expected_off, problems=cfg.problems)
+    return cfg.names, ctx
+
+
+def _map_payload(detail: str) -> dict:
+    """The map. Never raises. Brief and verbose are built from one fetch and cached
+    together, so "elaborate" narrates the same data as the brief it follows."""
+    cached = _map_cache.get("both")
+    if cached and time.time() - cached[0] < MAP_CACHE_TTL:
+        return cached[1][detail]
+    now = datetime.now()
+    generated_at = now.astimezone().isoformat(timespec="seconds")
+    try:
+        names, ctx = _map_sources(now)
+        both = {d: build_map(names, ctx, d, generated_at) for d in ("brief", "verbose")}
+    except Exception as e:  # last resort: still say something, and don't cache it
+        text = f"The map couldn't be built ({type(e).__name__})."
+        return {"generated_at": generated_at, "detail": detail, "sections": [], "text": text}
+    _map_cache["both"] = (time.time(), both)
+    return both[detail]
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # urllib then raises HTTPError, which _fetch_json turns into None
+
+
+def _fetch_json(url, token=None):
     """GET JSON, or None on any failure. Never raises: one unreachable
     upstream must degrade a half of the map, not blank the whole panel.
     None means failure; a genuine empty response ([] or {}) is success and
-    must stay distinguishable from the upstream being down."""
+    must stay distinguishable from the upstream being down. `token`, when
+    given, is sent as a bearer token (the voice base needs one)."""
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    # With a token, redirects are refused: urllib would carry the Authorization header to the new host.
+    opener = urllib.request.build_opener(_NoRedirect) if token else urllib.request.build_opener()
     try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
+        with opener.open(urllib.request.Request(url, headers=headers), timeout=5) as resp:
             return json.loads(resp.read())
     except (urllib.error.URLError, OSError, ValueError):
         return None
@@ -242,6 +333,13 @@ class CockpitHandler(BaseHTTPRequestHandler):
         if rel == "api/vault/context":
             ctx = vault_context()
             code, ctype, body = _json(ctx)
+            self._respond(code, body, ctype)
+            return
+
+        if rel == "api/map":
+            query = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+            detail = "verbose" if query.get("detail", ["brief"])[0] == "verbose" else "brief"
+            code, ctype, body = _json(_map_payload(detail))
             self._respond(code, body, ctype)
             return
 

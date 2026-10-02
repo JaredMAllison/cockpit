@@ -104,5 +104,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 | `http://localhost:8742/chat` | Ariel — POST chat, GET health, GET status |
 | `http://localhost:8742/health` | Ariel online indicator |
 | `http://localhost:8742/status` | Ariel model/inference state |
+| `http://localhost:7832/api/state` (`MARLIN_STATE_URL`) | `/api/map` next up |
+| `http://localhost:7840/health`, `/status`, `/liveness/gaps` (`VOICE_BASE_URL`, token from `VOICE_BASE_TOKEN_FILE`) | `/api/map` systems (optional) |
 
 All ports configurable in `hooks/api.js` — change `HOSTS` to match your deployment.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-01 — Map (`/api/map`)
+
+- `GET /api/map?detail=brief|verbose`: the day as short spoken-ready text (due today with the overdue count, next up, a calendar slot, systems), for the wearable's `map` Quickhack and other renderings
+- Sections and their order come from the vault's `System/StateMap/map-sections.yaml`; unknown names and unreadable lines are spoken, not dropped
+- Sources fetched once per request and cached 30 s; a failed source costs its sentence, never the map
+- `_fetch_json` takes an optional bearer token (voice base); token-bearing requests refuse redirects
+- Waiting tasks are never counted as overdue
+- `expected_off:` in the section file: things off by choice are silent in brief, named in verbose, and said when running again (no expiry)
+- Brief and verbose are built from one fetch and cached together, so "elaborate" matches the brief; `generated_at` carries its UTC offset
+- Malformed inputs (non-UTF-8 section file, non-object upstream JSON, broken snapshot) are spoken, never a 500
+
 ## 2026-05-08 — InkBlotter + deployment polish
 
 - InkBlotter panel: multi-tool creative surface (sketch, notes, docs, diagrams) with vault write API
