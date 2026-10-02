@@ -126,3 +126,14 @@ def test_the_token_is_not_sent_on_a_redirect():
     finally:
         for s in (origin, target):
             s.shutdown(); s.server_close()
+
+
+def test_expected_off_in_the_section_file_reaches_the_map(server, tmp_path, monkeypatch):
+    from datetime import datetime
+    snap = tmp_path / "machine.json"
+    snap.write_text(json.dumps({"generated_at": datetime.now().isoformat(timespec="seconds"),
+                                "services": [{"name": "git-knowledge-loom-1", "running": False}]}))
+    monkeypatch.setattr(cockpit, "STATEMAP_SNAPSHOT", snap)
+    cockpit.MAP_SECTIONS_FILE.write_text("sections:\n  - systems\nexpected_off:\n  - git-knowledge-loom-1\n")
+    assert get(server + "/api/map")["text"] == "Systems fine."
+    assert get(server + "/api/map?detail=verbose")["text"] == "All systems fine. Off by choice: git-knowledge-loom-1."

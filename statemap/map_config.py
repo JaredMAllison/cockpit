@@ -8,9 +8,12 @@ third-party dependencies):
       - next_up
     brief_list_cap: 2
     verbose_list_cap: 5
+    expected_off:        # off by choice: silent in brief, named in verbose
+      - some-service
 
 Anything this reader doesn't understand is reported, never silently ignored.
 """
+from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_SECTIONS = ["due_today", "next_up", "calendar", "systems"]
@@ -18,41 +21,54 @@ DEFAULT_CAP = 2
 DEFAULT_VERBOSE_CAP = 5
 
 
-def read_sections(path: Path):
-    """Return (names, brief_list_cap, verbose_list_cap, problems). Never raises."""
+@dataclass
+class MapConfig:
+    names: list
+    brief_cap: int = DEFAULT_CAP
+    verbose_cap: int = DEFAULT_VERBOSE_CAP
+    expected_off: list = field(default_factory=list)  # off by the operator's choice; no expiry
+    problems: list = field(default_factory=list)
+
+
+LISTS = ("sections", "expected_off")
+
+
+def read_sections(path: Path) -> MapConfig:
+    """The operator's map config. Never raises: what it can't use falls back and is reported."""
     try:
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
-        return list(DEFAULT_SECTIONS), DEFAULT_CAP, DEFAULT_VERBOSE_CAP, ["map sections file missing; using the default list"]
+        return MapConfig(list(DEFAULT_SECTIONS), problems=["map sections file missing; using the default list"])
     except ValueError:  # not UTF-8
-        return list(DEFAULT_SECTIONS), DEFAULT_CAP, DEFAULT_VERBOSE_CAP, ["map sections file unreadable; using the default list"]
-    names, cap, vcap, problems, in_list = [], DEFAULT_CAP, DEFAULT_VERBOSE_CAP, [], False
+        return MapConfig(list(DEFAULT_SECTIONS), problems=["map sections file unreadable; using the default list"])
+    cfg, lists, current = MapConfig([]), {"sections": [], "expected_off": []}, None
     for n, raw in enumerate(text.splitlines(), 1):
         line = raw.split("#", 1)[0].rstrip()
         if not line.strip():
             continue
-        if line.strip() == "sections:":
-            in_list = True
-        elif in_list and line.lstrip().startswith("- "):
+        if line.strip().rstrip(":") in LISTS and line.strip().endswith(":"):
+            current = line.strip()[:-1]
+        elif current and line.lstrip().startswith("- "):
             name = line.lstrip()[2:].strip().strip("\"'")
-            if name in names:
-                problems.append(f"map sections file line {n}: {name} is listed twice")
+            if name in lists[current]:
+                cfg.problems.append(f"map sections file line {n}: {name} is listed twice")
             else:
-                names.append(name)
+                lists[current].append(name)
         elif line.startswith(("brief_list_cap:", "verbose_list_cap:")):
-            in_list = False
+            current = None
             key, value = (part.strip() for part in line.split(":", 1))
             if value.isdigit() and int(value) > 0:
                 if key == "brief_list_cap":
-                    cap = int(value)
+                    cfg.brief_cap = int(value)
                 else:
-                    vcap = int(value)
+                    cfg.verbose_cap = int(value)
             else:
-                problems.append(f"map sections file line {n}: {key} must be a positive number")
+                cfg.problems.append(f"map sections file line {n}: {key} must be a positive number")
         else:
-            in_list = False
-            problems.append(f"map sections file line {n} not understood")
-    if not names:
-        problems.append("map sections file lists no sections; using the default list")
-        names = list(DEFAULT_SECTIONS)
-    return names, cap, vcap, problems
+            current = None
+            cfg.problems.append(f"map sections file line {n} not understood")
+    cfg.names, cfg.expected_off = lists["sections"], lists["expected_off"]
+    if not cfg.names:
+        cfg.problems.append("map sections file lists no sections; using the default list")
+        cfg.names = list(DEFAULT_SECTIONS)
+    return cfg

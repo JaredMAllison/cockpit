@@ -7,6 +7,7 @@
 - Sources fetched once per request and cached 30 s; a failed source costs its sentence, never the map
 - `_fetch_json` takes an optional bearer token (voice base); token-bearing requests refuse redirects
 - Waiting tasks are never counted as overdue
+- `expected_off:` in the section file: things off by choice are silent in brief, named in verbose, and said when running again (no expiry)
 - Brief and verbose are built from one fetch and cached together, so "elaborate" matches the brief; `generated_at` carries its UTC offset
 - Malformed inputs (non-UTF-8 section file, non-object upstream JSON, broken snapshot) are spoken, never a 500
 

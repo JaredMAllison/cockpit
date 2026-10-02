@@ -170,7 +170,7 @@ def _dict_or_none(value):
 
 def _map_sources(now: datetime) -> tuple:
     """Fetch every source once: (names, Context). Each failure becomes a None its section speaks."""
-    names, cap, verbose_cap, problems = read_sections(MAP_SECTIONS_FILE)
+    cfg = read_sections(MAP_SECTIONS_FILE)
     tasks_raw = _dict_or_none(_fetch_json(MARLIN_TASKS_URL))
     tasks = tasks_raw.get("tasks") if tasks_raw else None
     try:
@@ -188,8 +188,9 @@ def _map_sources(now: datetime) -> tuple:
             stale = f"{int(age // 60)} minutes old"
     ctx = Context(today=now.date(), now=now, tasks=tasks if isinstance(tasks, list) else None,
                   state=_dict_or_none(_fetch_json(MARLIN_STATE_URL)), machine=machine, machine_stale=stale,
-                  voice=_voice_status(), cap=cap, verbose_cap=verbose_cap, problems=problems)
-    return names, ctx
+                  voice=_voice_status(), cap=cfg.brief_cap, verbose_cap=cfg.verbose_cap,
+                  expected_off=cfg.expected_off, problems=cfg.problems)
+    return cfg.names, ctx
 
 
 def _map_payload(detail: str) -> dict:

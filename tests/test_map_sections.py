@@ -125,3 +125,34 @@ def test_waiting_tasks_are_not_overdue():
     s = due_today(ctx(tasks=[task("Blocked on Fritz", "2026-09-20", status="waiting"), task("Mine", "2026-09-20")]))
     assert s.brief == "Nothing due today. One overdue."
     assert "Blocked on Fritz" not in s.verbose
+
+
+# --- Expected off (operator, 2026-10-01: no expiry; verbose always names them) ---
+
+LOOM_DOWN = {"label": "git-knowledge-loom-1", "group": "services", "state": "degraded", "why": "failing: container not running"}
+LOOM_UP = {"label": "git-knowledge-loom-1", "group": "services", "state": "quiet", "why": ""}
+
+
+def test_expected_off_is_silent_in_brief_and_named_in_verbose():
+    s = systems(ctx(voice={"up": True, "lapsed": True}, machine=[LOOM_DOWN], expected_off=["git-knowledge-loom-1", "phone-agent"]))
+    assert s.brief == "Systems fine."
+    assert s.verbose == "All systems fine. Off by choice: git-knowledge-loom-1, phone-agent."
+
+
+def test_expected_off_silences_only_what_it_names():
+    ollama = {"label": "ollama", "group": "services", "state": "degraded", "why": "failing: exited"}
+    s = systems(ctx(voice={"up": True, "lapsed": True}, machine=[LOOM_DOWN, ollama], expected_off=["git-knowledge-loom-1"]))
+    assert s.brief == "The phone agent has gone quiet. And one more."
+    assert s.verbose.endswith("ollama: failing: exited. Off by choice: git-knowledge-loom-1.")
+
+
+def test_a_listed_item_running_again_is_said():
+    s = systems(ctx(voice={"up": True}, machine=[LOOM_UP], expected_off=["git-knowledge-loom-1", "phone-agent"]))
+    assert s.brief == "Systems fine."
+    assert "git-knowledge-loom-1 is running again but still marked off." in s.verbose
+    assert "phone-agent is running again but still marked off." in s.verbose
+
+
+def test_an_expected_off_name_that_matches_nothing_is_reported():
+    s = systems(ctx(voice={"up": True}, machine=[LOOM_DOWN], expected_off=["git-knowledg-loom-1"]))
+    assert "Expected off, but nothing is called git-knowledg-loom-1." in s.verbose

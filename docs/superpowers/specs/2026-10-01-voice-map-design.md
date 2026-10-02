@@ -68,6 +68,12 @@ sections:
 brief_list_cap: 2      # items named in a brief list before "and N more"
 ```
 
+**Expected off** (operator, 2026-10-01: *"I like Expected off"*, then *"No expiry, go with 1"*). An optional `expected_off:` list names things off **by the operator's choice**: a service container name, `phone-agent`, or `voice-base`. Declared, never inferred.
+- **Brief:** silent about them.
+- **Verbose:** always names them (*"Off by choice: …"*), in the operator's order.
+- **No expiry.** The guard against a stale entry is that verbose names it every time, and a listed item found running is said: *"X is running again but still marked off."*
+- **Scope:** only the named thing being off is silenced; anything else it reports still speaks. A listed name that matches nothing is reported.
+
 Unknown names are **skipped and reported** in `systems` (*"map: unknown section 'due_tody'"*), never silently dropped. A missing or unreadable file falls back to the default list above, and `systems` says so.
 
 ### The section contract

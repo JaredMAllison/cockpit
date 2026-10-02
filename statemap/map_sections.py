@@ -33,6 +33,7 @@ class Context:
     voice: Optional[dict] = None     # {"up", "lapsed", "worker_error"}; None = not configured
     cap: int = 2
     verbose_cap: int = 5
+    expected_off: list = field(default_factory=list)  # names off by the operator's choice
     problems: list = field(default_factory=list)  # config problems, spoken by `systems`
 
 
@@ -123,14 +124,28 @@ def systems(ctx: Context) -> Section:
     # the voice base (capture itself), then failing services, then the snapshot, then config.
     problems = []   # spoken in full by verbose; the first one leads the brief
     brief_first = None  # a shorter brief for the first problem, when its full text is long
+    # Expected off (operator, 2026-10-01): silent in brief, always named in verbose, no expiry.
+    # Only the named thing being off is silenced; anything else it reports still speaks.
+    off = set(ctx.expected_off)
+    off_now, back_on = [], []
+
+    def offness(name: str, is_off: bool) -> bool:
+        """True when this off-ness is expected and should not be spoken as a problem."""
+        if name in off:
+            (off_now if is_off else back_on).append(name)
+            return is_off
+        return False
+
     v = ctx.voice
     if v is not None:
         if not v.get("up"):
-            problems.append("The voice base is down.")
+            if not offness("voice-base", True):
+                problems.append("The voice base is down.")
         else:
             if v.get("error"):
                 problems.append(f"Voice base: {v['error']}.")
-            if v.get("lapsed"):
+            offness("voice-base", False)
+            if not offness("phone-agent", bool(v.get("lapsed"))) and v.get("lapsed"):
                 problems.append("The phone agent has gone quiet.")
             if v.get("worker_error"):
                 # Upstream text spoken aloud: one line, bounded; the brief names only the fact.
@@ -139,18 +154,28 @@ def systems(ctx: Context) -> Section:
                     brief_first = "Transcription is failing."
                 problems.append(f"Transcription is failing: {line}.")
     for cell in ctx.machine or []:
-        if cell.get("state") == "degraded":
+        down = cell.get("state") == "degraded"
+        if cell.get("group") == "services" and offness(cell.get("label"), down):
+            continue
+        if down:
             problems.append(f"{cell.get('label', cell.get('id'))}: {cell.get('why', 'failing')}.")
     if ctx.machine is None:
         problems.append("No machine snapshot.")
     elif ctx.machine_stale:
         problems.append(f"The machine snapshot is stale: {ctx.machine_stale}.")
+    if ctx.machine is not None:
+        known = {"voice-base", "phone-agent"} | {c.get("label") for c in ctx.machine if c.get("group") == "services"}
+        problems += [f"Expected off, but nothing is called {name}." for name in ctx.expected_off if name not in known]
     problems += [p[:1].upper() + p[1:] + ("" if p.endswith(".") else ".") for p in ctx.problems]
+    in_list_order = lambda names: [x for x in ctx.expected_off if x in names]  # spoken in the operator's order
+    tail = [f"{name} is running again but still marked off." for name in in_list_order(back_on)]
+    if off_now:
+        tail.append("Off by choice: " + ", ".join(in_list_order(off_now)) + ".")
     if not problems:
         notes = [f"{c.get('label', c.get('id'))}: {c.get('why')}." for c in ctx.machine or [] if c.get("state") == "needs-you"]
-        return Section("systems", "Systems fine.", "All systems fine." + (" " + " ".join(notes) if notes else ""))
+        return Section("systems", "Systems fine.", " ".join(["All systems fine."] + notes + tail))
     brief = (brief_first or problems[0]) + (f" And {number(len(problems) - 1)} more." if len(problems) > 1 else "")
-    return Section("systems", brief, " ".join(problems))
+    return Section("systems", brief, " ".join(problems + tail))
 
 
 SECTIONS: dict[str, Callable[[Context], Section]] = {
