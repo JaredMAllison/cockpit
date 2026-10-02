@@ -46,7 +46,7 @@ cockpit: GET /api/map?detail=brief|verbose      (new; beside /api/state-map)
           │   sources (fetched once per request, shared by all sections):
           │     tasks       ← Marlin webhook  :7832/api/tasks        (existing)
           │     projects    ← dashboard       :7833/api/projects     (existing)
-          │     surfaced    ← Marlin webhook  :7832/api/surfaced     (NEW, small)
+          │     state       ← Marlin webhook  :7832/api/state        (existing: last_surfaced_task)
           │     machine     ← System/StateMap/machine.json           (existing snapshot)
           │     voice base  ← :7840/status and /liveness/gaps        (existing, token)
           ▼
@@ -97,6 +97,12 @@ class Section:
 | `systems` | "Systems fine." / the single worst problem ("The base is down since 9:14.") | each service, sync backlog, kept-aside segments, last backup age, any unknown section names | machine snapshot, voice base `/status` and `/liveness/gaps` |
 
 Lists in a brief name at most `brief_list_cap` items, then "and N more."
+
+**Changes after the first real-data run (2026-10-01):**
+- **The overdue count stays in the brief** (operator: *"Keep the count."*). Real data said "51 overdue."
+- **Verbose caps lists too:** overdue reads as the count plus the most recently due few (`verbose_list_cap`, default 5), never all of them. The first run read out all 51, which broke brief-first inside verbose.
+- **`next_up` gets its project from `/api/state`'s existing data**, and **no `/api/surfaced` route is added:** the webhook already serves `last_surfaced_task` and `last_surfaced_at` at `/api/state`, so the spec's new route was unnecessary (remediation on contact: simplified).
+- **Host `systems` covers the host only.** The sync backlog and kept-aside counts live on the phone, so the phone's live line reports them (phone plan).
 
 ### `/api/surfaced` (Marlin webhook, new)
 
