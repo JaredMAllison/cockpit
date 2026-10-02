@@ -156,3 +156,10 @@ def test_a_listed_item_running_again_is_said():
 def test_an_expected_off_name_that_matches_nothing_is_reported():
     s = systems(ctx(voice={"up": True}, machine=[LOOM_DOWN], expected_off=["git-knowledg-loom-1"]))
     assert "Expected off, but nothing is called git-knowledg-loom-1." in s.verbose
+
+
+def test_needs_you_notes_are_capped_in_verbose():
+    # Real data read six dirty repos aloud; brief-first applies inside verbose too.
+    dirty = [{"label": f"repo{i}", "group": "repos", "state": "needs-you", "why": f"{i} uncommitted file(s)"} for i in range(1, 7)]
+    s = systems(ctx(voice={"up": True}, machine=dirty, verbose_cap=2))
+    assert s.verbose == "All systems fine. repo1: 1 uncommitted file(s). repo2: 2 uncommitted file(s). And 4 more needing you."

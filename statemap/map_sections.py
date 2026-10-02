@@ -173,6 +173,8 @@ def systems(ctx: Context) -> Section:
         tail.append("Off by choice: " + ", ".join(in_list_order(off_now)) + ".")
     if not problems:
         notes = [f"{c.get('label', c.get('id'))}: {c.get('why')}." for c in ctx.machine or [] if c.get("state") == "needs-you"]
+        if len(notes) > ctx.verbose_cap:
+            notes = notes[:ctx.verbose_cap] + [f"And {number(len(notes) - ctx.verbose_cap)} more needing you."]
         return Section("systems", "Systems fine.", " ".join(["All systems fine."] + notes + tail))
     brief = (brief_first or problems[0]) + (f" And {number(len(problems) - 1)} more." if len(problems) > 1 else "")
     return Section("systems", brief, " ".join(problems + tail))
